@@ -378105,15 +378105,48 @@ var DronComponent = class {
         l.intensity = 0.25;
       }
     });
-    const camera = new ArcRotateCamera("dronWorkCam", -Math.PI / 2, Math.PI / 2.7, 1.35, new Vector3(0, 0.18, 0), scene);
+    window.addEventListener("resize", () => {
+      scene.getEngine().resize();
+    });
+    document.addEventListener("fullscreenchange", () => {
+      setTimeout(() => scene.getEngine().resize(), 100);
+    });
+    document.addEventListener("webkitfullscreenchange", () => {
+      setTimeout(() => scene.getEngine().resize(), 100);
+    });
+    function toggleFullScreen() {
+      try {
+        const doc = document;
+        const docEl = document.documentElement;
+        if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
+          if (docEl.requestFullscreen) docEl.requestFullscreen();
+          else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+          else if (docEl.mozRequestFullScreen) docEl.mozRequestFullScreen();
+          else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+        } else {
+          if (doc.exitFullscreen) doc.exitFullscreen();
+          else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+          else if (doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+          else if (doc.msExitFullscreen) doc.msExitFullscreen();
+        }
+        setTimeout(() => scene.getEngine().resize(), 150);
+      } catch (e) {
+        console.warn("Fullscreen toggle error:", e);
+      }
+    }
+    __name(toggleFullScreen, "toggleFullScreen");
+    const camera = new ArcRotateCamera("dronWorkCam", -Math.PI / 2, Math.PI / 2.8, 1.25, new Vector3(0, 0.12, 0.02), scene);
     if (canvas) {
       camera.attachControl(canvas, true);
     }
     camera.wheelPrecision = 40;
-    camera.lowerRadiusLimit = 0.25;
-    camera.upperRadiusLimit = 3.2;
+    camera.lowerRadiusLimit = 0.35;
+    camera.upperRadiusLimit = 2.4;
+    camera.minZ = 0.02;
+    camera.maxZ = 40;
     camera.lowerBetaLimit = 0.15;
-    camera.upperBetaLimit = Math.PI / 2 - 0.05;
+    camera.upperBetaLimit = Math.PI / 2.3;
+    camera.panningSensibility = 0;
     scene.activeCamera = camera;
     const studioKey = new DirectionalLight("studioKey", new Vector3(-1.2, -2.5, 1), scene);
     studioKey.position = new Vector3(3.5, 7, -3.5);
@@ -378126,10 +378159,47 @@ var DronComponent = class {
     studioRim.diffuse = new Color3(0.92, 0.94, 0.98);
     studioRim.groundColor = new Color3(0.18, 0.2, 0.24);
     const hl = new HighlightLayer("hl_dron", scene);
+    const glowLayer = new GlowLayer("glowLayer", scene, {
+      mainTextureRatio: 0.5,
+      blurKernelSize: 16
+    });
+    glowLayer.intensity = 0.4;
+    let pipeline = null;
+    try {
+      pipeline = new DefaultRenderingPipeline("defaultPipeline", true, scene, [camera]);
+      if (pipeline) {
+        pipeline.samples = 4;
+        scene.imageProcessingConfiguration.toneMappingEnabled = true;
+        scene.imageProcessingConfiguration.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
+        scene.imageProcessingConfiguration.contrast = 1.15;
+        scene.imageProcessingConfiguration.exposure = 1.05;
+        pipeline.bloomEnabled = false;
+        pipeline.imageProcessing.vignetteEnabled = true;
+        pipeline.imageProcessing.vignetteWeight = 0.8;
+        pipeline.imageProcessing.vignetteStretch = 0.5;
+        pipeline.imageProcessing.vignetteColor = new Color4(0.01, 0.02, 0.05, 0);
+        pipeline.chromaticAberrationEnabled = false;
+      }
+    } catch (e) {
+      console.warn("Pipeline de post-procesado en modo fallback:", e);
+    }
+    let shadowGenerator = null;
+    try {
+      shadowGenerator = new ShadowGenerator(512, studioKey);
+      shadowGenerator.usePoissonSampling = true;
+      shadowGenerator.bias = 2e-3;
+    } catch (e) {
+      console.warn("Shadow generator no disponible:", e);
+    }
     const carbonMat = new PBRMaterial("carbonMat", scene);
-    carbonMat.metallic = 0.4;
-    carbonMat.roughness = 0.35;
-    carbonMat.albedoColor = new Color3(0.08, 0.08, 0.09);
+    carbonMat.metallic = 0.35;
+    carbonMat.roughness = 0.28;
+    carbonMat.albedoColor = new Color3(0.07, 0.07, 0.08);
+    if (carbonMat.clearCoat) {
+      carbonMat.clearCoat.isEnabled = true;
+      carbonMat.clearCoat.intensity = 0.95;
+      carbonMat.clearCoat.roughness = 0.08;
+    }
     const carbonTex = new DynamicTexture("carbonTex", 256, scene, false);
     const cCtx = carbonTex.getContext();
     for (let x = 0; x < 256; x += 16) {
@@ -378142,13 +378212,22 @@ var DronComponent = class {
     carbonTex.update();
     carbonMat.albedoTexture = carbonTex;
     const redCncMat = new PBRMaterial("redCncMat", scene);
-    redCncMat.metallic = 0.88;
-    redCncMat.roughness = 0.22;
+    redCncMat.metallic = 0.92;
+    redCncMat.roughness = 0.18;
     redCncMat.albedoColor = new Color3(0.85, 0.08, 0.12);
+    if (redCncMat.anisotropy) {
+      redCncMat.anisotropy.isEnabled = true;
+      redCncMat.anisotropy.intensity = 0.85;
+      redCncMat.anisotropy.direction = new Vector2(1, 0);
+    }
     const steelMat = new PBRMaterial("steelMat", scene);
-    steelMat.metallic = 0.95;
-    steelMat.roughness = 0.2;
-    steelMat.albedoColor = new Color3(0.82, 0.84, 0.88);
+    steelMat.metallic = 0.96;
+    steelMat.roughness = 0.16;
+    steelMat.albedoColor = new Color3(0.84, 0.86, 0.9);
+    if (steelMat.anisotropy) {
+      steelMat.anisotropy.isEnabled = true;
+      steelMat.anisotropy.intensity = 0.6;
+    }
     const copperMat = new PBRMaterial("copperMat", scene);
     copperMat.metallic = 0.9;
     copperMat.roughness = 0.28;
@@ -378192,54 +378271,207 @@ var DronComponent = class {
     propCcwMat.metallic = 0.5;
     propCcwMat.roughness = 0.3;
     propCcwMat.albedoColor = new Color3(0.05, 0.65, 0.98);
+    const ledGreenMat = new StandardMaterial("ledGreenMat", scene);
+    ledGreenMat.emissiveColor = new Color3(0, 1, 0.25);
+    ledGreenMat.diffuseColor = new Color3(0, 0.8, 0.2);
+    const ledRedMat = new StandardMaterial("ledRedMat", scene);
+    ledRedMat.emissiveColor = new Color3(1, 0.05, 0.1);
+    ledRedMat.diffuseColor = new Color3(0.8, 0.05, 0.1);
+    const ledStrobeWhiteMat = new StandardMaterial("ledStrobeWhiteMat", scene);
+    ledStrobeWhiteMat.emissiveColor = new Color3(1, 1, 1);
+    ledStrobeWhiteMat.diffuseColor = new Color3(1, 1, 1);
+    const aeroVectorMat = new StandardMaterial("aeroVectorMat", scene);
+    aeroVectorMat.emissiveColor = new Color3(0, 0.9, 1);
+    aeroVectorMat.diffuseColor = new Color3(0, 0.7, 0.9);
+    const aeroVortexMat = new StandardMaterial("aeroVortexMat", scene);
+    aeroVortexMat.emissiveColor = new Color3(0.08, 0.65, 1);
+    aeroVortexMat.diffuseColor = new Color3(0, 0.4, 0.8);
+    aeroVortexMat.alpha = 0.75;
+    const propWhiteMat = new PBRMaterial("propWhiteMat", scene);
+    propWhiteMat.metallic = 0.15;
+    propWhiteMat.roughness = 0.2;
+    propWhiteMat.albedoColor = new Color3(0.96, 0.97, 0.99);
+    const ledDotMat = new StandardMaterial("ledDotMat", scene);
+    ledDotMat.emissiveColor = new Color3(0.95, 0.98, 1);
+    ledDotMat.diffuseColor = new Color3(1, 1, 1);
     const workbenchRoot = new TransformNode("workbenchRoot", scene);
-    const tableTop = MeshBuilder.CreateBox("tableTop", { width: 2.5, height: 0.045, depth: 1.6 }, scene);
-    tableTop.position.set(0, -0.023, 0);
+    const tableTop = MeshBuilder.CreateBox("tableTop", { width: 2.7, height: 0.05, depth: 1.7 }, scene);
+    tableTop.position.set(0, -0.025, 0);
     tableTop.parent = workbenchRoot;
     const woodMat = new PBRMaterial("woodMat", scene);
-    woodMat.metallic = 0.05;
-    woodMat.roughness = 0.65;
-    const woodTex = new DynamicTexture("woodTex", 512, scene, false);
+    woodMat.metallic = 0.04;
+    woodMat.roughness = 0.36;
+    const woodTex = new DynamicTexture("woodTex", 1024, scene, false);
     const wCtx = woodTex.getContext();
-    wCtx.fillStyle = "#9c7a52";
-    wCtx.fillRect(0, 0, 512, 512);
-    wCtx.fillStyle = "rgba(70, 48, 25, 0.18)";
-    for (let i = 0; i < 512; i += 8) {
-      wCtx.fillRect(0, i, 512, 4);
+    wCtx.fillStyle = "#8a5d3b";
+    wCtx.fillRect(0, 0, 1024, 1024);
+    for (let i = 0; i < 1024; i += 4) {
+      const alpha = 0.05 + 0.08 * Math.sin(i * 0.04) * Math.cos(i * 0.015);
+      wCtx.fillStyle = `rgba(55, 32, 14, ${alpha})`;
+      wCtx.fillRect(0, i, 1024, 3);
+    }
+    wCtx.fillStyle = "rgba(40, 22, 10, 0.12)";
+    wCtx.beginPath();
+    if (wCtx.ellipse) {
+      wCtx.ellipse(320, 240, 120, 18, 0.08, 0, Math.PI * 2);
+      wCtx.fill();
+      wCtx.beginPath();
+      wCtx.ellipse(780, 680, 140, 22, -0.05, 0, Math.PI * 2);
+      wCtx.fill();
     }
     woodTex.update();
     woodMat.albedoTexture = woodTex;
     tableTop.material = woodMat;
-    const esdMat = MeshBuilder.CreatePlane("esdMat", { width: 1.05, height: 0.75 }, scene);
-    esdMat.rotation.x = Math.PI / 2;
-    esdMat.position.set(0, 1e-3, 0.02);
-    esdMat.parent = workbenchRoot;
-    const esdTexture = new DynamicTexture("esdTexture", 512, scene, false);
-    const eCtx = esdTexture.getContext();
-    eCtx.fillStyle = "#162846";
-    eCtx.fillRect(0, 0, 512, 512);
-    eCtx.strokeStyle = "rgba(0, 229, 255, 0.4)";
-    eCtx.lineWidth = 1.5;
-    for (let g = 0; g <= 512; g += 32) {
-      eCtx.beginPath();
-      eCtx.moveTo(g, 0);
-      eCtx.lineTo(g, 512);
-      eCtx.stroke();
-      eCtx.beginPath();
-      eCtx.moveTo(0, g);
-      eCtx.lineTo(512, g);
-      eCtx.stroke();
+    tableTop.receiveShadows = true;
+    const cuttingMat = MeshBuilder.CreateBox("cuttingMat", { width: 1.25, height: 8e-3, depth: 0.88 }, scene);
+    cuttingMat.position.set(0, 4e-3, 0.02);
+    cuttingMat.parent = workbenchRoot;
+    cuttingMat.receiveShadows = true;
+    const cutTex = new DynamicTexture("cutTex", 1024, scene, false);
+    const cCtxMat = cutTex.getContext();
+    cCtxMat.fillStyle = "#0284c7";
+    cCtxMat.fillRect(0, 0, 1024, 1024);
+    cCtxMat.strokeStyle = "rgba(255, 255, 255, 0.28)";
+    cCtxMat.lineWidth = 1;
+    for (let g = 0; g <= 1024; g += 32) {
+      cCtxMat.beginPath();
+      cCtxMat.moveTo(g, 0);
+      cCtxMat.lineTo(g, 1024);
+      cCtxMat.moveTo(0, g);
+      cCtxMat.lineTo(1024, g);
+      cCtxMat.stroke();
     }
-    eCtx.fillStyle = "#00e5ff";
-    eCtx.font = "bold 16px monospace";
-    eCtx.fillText("BANCO DE PRUEBAS AEROESPACIAL \u2022 ZD550", 25, 35);
-    eCtx.fillText("METRIC ESD GRID 10mm", 25, 495);
-    esdTexture.update();
-    const esdMaterial = new PBRMaterial("esdMaterial", scene);
-    esdMaterial.metallic = 0.1;
-    esdMaterial.roughness = 0.5;
-    esdMaterial.albedoTexture = esdTexture;
-    esdMat.material = esdMaterial;
+    cCtxMat.strokeStyle = "rgba(255, 255, 255, 0.70)";
+    cCtxMat.lineWidth = 2.5;
+    for (let g = 0; g <= 1024; g += 160) {
+      cCtxMat.beginPath();
+      cCtxMat.moveTo(g, 0);
+      cCtxMat.lineTo(g, 1024);
+      cCtxMat.moveTo(0, g);
+      cCtxMat.lineTo(1024, g);
+      cCtxMat.stroke();
+    }
+    cCtxMat.strokeStyle = "rgba(255, 255, 255, 0.50)";
+    cCtxMat.lineWidth = 1.5;
+    cCtxMat.beginPath();
+    cCtxMat.moveTo(0, 0);
+    cCtxMat.lineTo(1024, 1024);
+    cCtxMat.moveTo(1024, 0);
+    cCtxMat.lineTo(0, 1024);
+    cCtxMat.stroke();
+    cCtxMat.strokeStyle = "rgba(255, 255, 255, 0.40)";
+    cCtxMat.setLineDash([8, 6]);
+    [120, 240, 360].forEach((r) => {
+      cCtxMat.beginPath();
+      cCtxMat.arc(512, 512, r, 0, Math.PI * 2);
+      cCtxMat.stroke();
+    });
+    cCtxMat.setLineDash([]);
+    cCtxMat.fillStyle = "#ffffff";
+    cCtxMat.font = "bold 14px Arial";
+    for (let cm = 1; cm <= 16; cm++) {
+      cCtxMat.fillText(String(cm * 5), cm * 60 - 8, 22);
+      cCtxMat.fillText(String(cm * 5), cm * 60 - 8, 1016);
+    }
+    for (let cm = 1; cm <= 10; cm++) {
+      cCtxMat.fillText(String(cm * 5), 8, cm * 96);
+      cCtxMat.fillText(String(cm * 5), 988, cm * 96);
+    }
+    cCtxMat.font = "bold 22px Arial";
+    cCtxMat.fillText("DRL RACER \u2022 MODEL CUTTING MAT \u2022 SELF HEALING", 40, 60);
+    cCtxMat.font = "bold 14px monospace";
+    cCtxMat.fillText("ENGINEERING WORKBENCH \u2022 METRIC 10mm GRID", 40, 960);
+    cutTex.update();
+    const cutMat = new PBRMaterial("cutMat", scene);
+    cutMat.metallic = 0.05;
+    cutMat.roughness = 0.4;
+    cutMat.albedoTexture = cutTex;
+    cuttingMat.material = cutMat;
+    tableTop.freezeWorldMatrix();
+    cuttingMat.freezeWorldMatrix();
+    const radioGroup = new TransformNode("radioGroup", scene);
+    radioGroup.parent = workbenchRoot;
+    radioGroup.position.set(-0.62, 0.024, 0.42);
+    radioGroup.rotation.y = 0.18;
+    const radioBody = MeshBuilder.CreateBox("radioBody", { width: 0.16, height: 0.038, depth: 0.18 }, scene);
+    radioBody.material = polymerMat;
+    radioBody.parent = radioGroup;
+    const radioScreen = MeshBuilder.CreatePlane("radioScreen", { width: 0.075, height: 0.045 }, scene);
+    radioScreen.rotation.x = Math.PI / 2;
+    radioScreen.position.set(0, 0.02, -0.01);
+    const radioScreenMat = new StandardMaterial("radioScreenMat", scene);
+    radioScreenMat.emissiveColor = new Color3(0, 0.7, 0.9);
+    radioScreenMat.diffuseColor = new Color3(0, 0.2, 0.4);
+    radioScreen.material = radioScreenMat;
+    radioScreen.parent = radioGroup;
+    [-0.042, 0.042].forEach((gx, gi) => {
+      const gimbalRing = MeshBuilder.CreateTorus("gRing_" + gi, { diameter: 0.034, thickness: 5e-3 }, scene);
+      gimbalRing.position.set(gx, 0.021, 0.045);
+      gimbalRing.material = redCncMat;
+      gimbalRing.parent = radioGroup;
+      const stick = MeshBuilder.CreateCylinder("stick_" + gi, { diameter: 4e-3, height: 0.024 }, scene);
+      stick.position.set(gx, 0.032, 0.045);
+      stick.material = steelMat;
+      stick.parent = radioGroup;
+    });
+    const radioAnt = MeshBuilder.CreateCylinder("radioAnt", { diameter: 7e-3, height: 0.12 }, scene);
+    radioAnt.rotation.z = Math.PI / 2;
+    radioAnt.position.set(0, 0.02, 0.1);
+    radioAnt.material = polymerMat;
+    radioAnt.parent = radioGroup;
+    const goggleGroup = new TransformNode("goggleGroup", scene);
+    goggleGroup.parent = workbenchRoot;
+    goggleGroup.position.set(-0.28, 0.028, 0.46);
+    goggleGroup.rotation.y = -0.15;
+    const goggleBody = MeshBuilder.CreateBox("goggleBody", { width: 0.14, height: 0.048, depth: 0.075 }, scene);
+    const goggleMat = new PBRMaterial("goggleMat", scene);
+    goggleMat.metallic = 0.2;
+    goggleMat.roughness = 0.25;
+    goggleMat.albedoColor = new Color3(0.92, 0.93, 0.95);
+    goggleBody.material = goggleMat;
+    goggleBody.parent = goggleGroup;
+    [-0.045, 0.045].forEach((ax, ai) => {
+      const antStem = MeshBuilder.CreateCylinder("gAntStem_" + ai, { diameter: 4e-3, height: 0.045 }, scene);
+      antStem.position.set(ax, 0.045, 0.015);
+      antStem.material = polymerMat;
+      antStem.parent = goggleGroup;
+      const antCap = MeshBuilder.CreateSphere("gAntCap_" + ai, { diameter: 0.018 }, scene);
+      antCap.position.set(ax, 0.068, 0.015);
+      antCap.material = polymerMat;
+      antCap.parent = goggleGroup;
+    });
+    const goggleStrap = MeshBuilder.CreateTorus("gStrap", { diameter: 0.13, thickness: 0.016, tessellation: 32 }, scene);
+    goggleStrap.position.set(0, 5e-3, -0.035);
+    goggleStrap.scaling.z = 1.4;
+    const strapMat = new StandardMaterial("strapMat", scene);
+    strapMat.diffuseColor = new Color3(0.12, 0.15, 0.22);
+    goggleStrap.material = strapMat;
+    goggleStrap.parent = goggleGroup;
+    const workshopBackdrop = new TransformNode("workshopBackdrop", scene);
+    workshopBackdrop.parent = workbenchRoot;
+    workshopBackdrop.position.set(0, 0.5, 1.35);
+    const backWall = MeshBuilder.CreatePlane("backWall", { width: 3.4, height: 1.8 }, scene);
+    const wallMat = new PBRMaterial("wallMat", scene);
+    wallMat.metallic = 0.05;
+    wallMat.roughness = 0.85;
+    wallMat.albedoColor = new Color3(0.16, 0.18, 0.24);
+    backWall.material = wallMat;
+    backWall.parent = workshopBackdrop;
+    const shelf = MeshBuilder.CreateBox("shelf", { width: 2.4, height: 0.025, depth: 0.22 }, scene);
+    shelf.position.set(0, 0.22, -0.1);
+    shelf.material = steelMat;
+    shelf.parent = workshopBackdrop;
+    backWall.freezeWorldMatrix();
+    shelf.freezeWorldMatrix();
+    for (let bx = -1; bx <= 1; bx += 0.22) {
+      const bin = MeshBuilder.CreateBox("bin_" + bx.toFixed(1), { width: 0.18, height: 0.09, depth: 0.15 }, scene);
+      bin.position.set(bx, 0.28, -0.1);
+      const binMat = new StandardMaterial("binMat_" + bx, scene);
+      binMat.diffuseColor = Math.sin(bx * 4) > 0 ? new Color3(0.8, 0.15, 0.15) : new Color3(0.15, 0.45, 0.85);
+      bin.material = binMat;
+      bin.parent = workshopBackdrop;
+      bin.freezeWorldMatrix();
+    }
     function makeTray(x, z, w, d) {
       const tray = MeshBuilder.CreateBox("tray", { width: w, height: 0.016, depth: d }, scene);
       tray.position.set(x, 8e-3, z);
@@ -378248,68 +378480,161 @@ var DronComponent = class {
       return tray;
     }
     __name(makeTray, "makeTray");
-    makeTray(-0.85, -0.32, 0.45, 0.35);
-    makeTray(-0.85, 0.32, 0.45, 0.35);
-    makeTray(0.85, -0.32, 0.45, 0.35);
-    makeTray(0.85, 0.32, 0.45, 0.35);
-    const showroomPedestal = MeshBuilder.CreateCylinder("showroomPedestal", { diameter: 0.92, height: 0.015, tessellation: 64 }, scene);
-    showroomPedestal.position.set(0, 0.01, 0.02);
+    makeTray(-0.95, -0.32, 0.4, 0.32);
+    makeTray(-0.95, 0.32, 0.4, 0.32);
+    makeTray(0.95, -0.32, 0.4, 0.32);
+    makeTray(0.95, 0.32, 0.4, 0.32);
+    const showroomPedestal = MeshBuilder.CreateCylinder("showroomPedestal", { diameter: 0.46, height: 0.014, tessellation: 64 }, scene);
+    showroomPedestal.position.set(0, 7e-3, 0.02);
     const pedestalMat = new PBRMaterial("pedestalMat", scene);
-    pedestalMat.metallic = 0.1;
-    pedestalMat.roughness = 0.3;
-    pedestalMat.albedoColor = new Color3(0.96, 0.97, 0.99);
+    pedestalMat.metallic = 0.65;
+    pedestalMat.roughness = 0.35;
+    pedestalMat.albedoColor = new Color3(0.12, 0.14, 0.18);
     showroomPedestal.material = pedestalMat;
+    showroomPedestal.receiveShadows = true;
     showroomPedestal.setEnabled(false);
     showroomPedestal.isVisible = false;
+    const pedestalRing = MeshBuilder.CreateTorus("pedestalRing", { diameter: 0.46, thickness: 5e-3, tessellation: 64 }, scene);
+    pedestalRing.position.set(0, 0.014, 0.02);
+    const ringMat = new StandardMaterial("ringMat", scene);
+    ringMat.emissiveColor = new Color3(0, 0.75, 0.95);
+    ringMat.diffuseColor = new Color3(0, 0.5, 0.8);
+    pedestalRing.material = ringMat;
+    pedestalRing.setEnabled(false);
+    pedestalRing.isVisible = false;
+    const snapTargetRoot = new TransformNode("snapTargetRoot", scene);
+    snapTargetRoot.position.set(0, 0.012, 0.02);
+    const snapRing = MeshBuilder.CreateTorus("snapRing", { diameter: 0.38, thickness: 7e-3, tessellation: 48 }, scene);
+    snapRing.parent = snapTargetRoot;
+    const snapRingMat = new StandardMaterial("snapRingMat", scene);
+    snapRingMat.emissiveColor = new Color3(0, 0.85, 1);
+    snapRingMat.diffuseColor = new Color3(0, 0.5, 0.8);
+    snapRing.material = snapRingMat;
+    snapRing.isVisible = false;
+    const snapDisc = MeshBuilder.CreateDisc("snapDisc", { radius: 0.19, tessellation: 36 }, scene);
+    snapDisc.rotation.x = Math.PI / 2;
+    snapDisc.parent = snapTargetRoot;
+    const snapDiscMat = new StandardMaterial("snapDiscMat", scene);
+    snapDiscMat.emissiveColor = new Color3(0, 0.6, 1);
+    snapDiscMat.diffuseColor = new Color3(0, 0.2, 0.5);
+    snapDiscMat.alpha = 0.25;
+    snapDisc.material = snapDiscMat;
+    snapDisc.isVisible = false;
+    const ui = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    let topNavRibbon = null;
+    let btnFullScreen = null;
+    let telemetryCard = null;
+    let frameDrawer = null;
+    let bottomBar = null;
+    let partsDrawer = null;
+    let workbenchDossier = null;
+    function setWorkshopUIVisibility(visible) {
+      if (topNavRibbon) topNavRibbon.isVisible = visible;
+      if (btnFullScreen) btnFullScreen.isVisible = visible;
+      if (telemetryCard) telemetryCard.isVisible = visible;
+      if (frameDrawer) frameDrawer.isVisible = visible;
+      if (bottomBar) bottomBar.isVisible = visible;
+      if (partsDrawer) partsDrawer.isVisible = visible;
+      if (!visible && workbenchDossier) workbenchDossier.isVisible = false;
+    }
+    __name(setWorkshopUIVisibility, "setWorkshopUIVisibility");
     const droneRoot = new TransformNode("droneRoot", scene);
-    droneRoot.position.set(0, 0.16, 0.02);
-    let activePrototypeId = "zd550";
+    droneRoot.position.set(0, 0.045, 0.02);
+    let activePrototypeId = "drl_racer";
     let PARTS = [];
+    let propNodes = [];
+    let aeroSystemRoot = null;
+    let isAeroVisible = true;
+    let thrustVectorMeshes = [];
+    let downwashVortices = [];
+    let navLeds = [];
+    let isFlightMode = false;
+    let isLanding = false;
+    let flightTargetY = 0.85;
+    let propSpinSpeed = 0;
+    let keyState = {};
+    let flightStartTime = 0;
+    function registerShadowCasters(node) {
+      if (!shadowGenerator) return;
+      node.getChildMeshes().forEach((m) => {
+        shadowGenerator.addShadowCaster(m, true);
+        m.receiveShadows = true;
+      });
+    }
+    __name(registerShadowCasters, "registerShadowCasters");
     function buildDroneComponents(protoType) {
       droneRoot.getChildren().forEach((c) => c.dispose());
       PARTS = [];
+      propNodes = [];
+      navLeds = [];
+      thrustVectorMeshes.forEach((tv) => tv.label.dispose());
+      thrustVectorMeshes = [];
+      downwashVortices = [];
+      const isRacer = protoType === "drl_racer";
       const isHexa = protoType === "tarot680";
       const armCount = isHexa ? 6 : 4;
-      const armRadius = isHexa ? 0.34 : 0.275;
+      const armRadius = isRacer ? 0.165 : isHexa ? 0.34 : 0.275;
+      droneRoot.position.set(0, isRacer ? 0.045 : isHexa ? 0.235 : 0.225, 0.02);
       const bottomGroup = new TransformNode("bottomGroup", scene);
       bottomGroup.parent = droneRoot;
-      const plateC = MeshBuilder.CreateCylinder("plateC", { diameter: isHexa ? 0.28 : 0.24, height: 3e-3, tessellation: isHexa ? 12 : 8 }, scene);
-      plateC.material = carbonMat;
-      plateC.parent = bottomGroup;
-      const pcbLayer = MeshBuilder.CreateCylinder("pcbLayer", { diameter: isHexa ? 0.24 : 0.2, height: 15e-4, tessellation: isHexa ? 12 : 8 }, scene);
-      pcbLayer.position.y = 2e-3;
-      const pcbMat = new PBRMaterial("pcbMat", scene);
-      pcbMat.metallic = 0.3;
-      pcbMat.roughness = 0.4;
-      pcbMat.albedoColor = new Color3(0.08, 0.42, 0.18);
-      pcbLayer.material = pcbMat;
-      pcbLayer.parent = bottomGroup;
-      for (let b = 0; b < armCount; b++) {
-        const ang0 = b * Math.PI * 2 / armCount;
-        const clamp = MeshBuilder.CreateBox("clamp_" + b, { width: 0.038, height: 0.016, depth: 0.028 }, scene);
-        clamp.position.set(Math.cos(ang0) * 0.085, 9e-3, Math.sin(ang0) * 0.085);
-        clamp.rotation.y = -ang0 + Math.PI / 2;
-        clamp.material = redCncMat;
-        clamp.parent = bottomGroup;
-        [-0.012, 0.012].forEach((sx, si) => {
-          const bolt = MeshBuilder.CreateCylinder("bolt_" + b + "_" + si, { diameter: 55e-4, height: 4e-3 }, scene);
-          bolt.position.set(clamp.position.x + sx * 0.5, 0.018, clamp.position.z);
-          bolt.material = steelMat;
-          bolt.parent = bottomGroup;
-        });
+      if (isRacer) {
+        const baseArm1 = MeshBuilder.CreateBox("baseArm1", { width: 0.32, height: 4e-3, depth: 0.036 }, scene);
+        baseArm1.rotation.y = Math.PI / 4;
+        baseArm1.material = carbonMat;
+        baseArm1.parent = bottomGroup;
+        const baseArm2 = MeshBuilder.CreateBox("baseArm2", { width: 0.32, height: 4e-3, depth: 0.036 }, scene);
+        baseArm2.rotation.y = -Math.PI / 4;
+        baseArm2.material = carbonMat;
+        baseArm2.parent = bottomGroup;
+        const centerPlate = MeshBuilder.CreateCylinder("centerPlate", { diameter: 0.13, height: 4e-3, tessellation: 16 }, scene);
+        centerPlate.material = carbonMat;
+        centerPlate.parent = bottomGroup;
+        const pcbPwr = MeshBuilder.CreateCylinder("pcbPwr", { diameter: 0.085, height: 2e-3, tessellation: 16 }, scene);
+        pcbPwr.position.y = 3e-3;
+        const pcbPwrMat = new PBRMaterial("pcbPwrMat", scene);
+        pcbPwrMat.metallic = 0.2;
+        pcbPwrMat.albedoColor = new Color3(0.06, 0.35, 0.14);
+        pcbPwr.material = pcbPwrMat;
+        pcbPwr.parent = bottomGroup;
+      } else {
+        const plateC = MeshBuilder.CreateCylinder("plateC", { diameter: isHexa ? 0.28 : 0.24, height: 3e-3, tessellation: isHexa ? 12 : 8 }, scene);
+        plateC.material = carbonMat;
+        plateC.parent = bottomGroup;
+        const pcbLayer = MeshBuilder.CreateCylinder("pcbLayer", { diameter: isHexa ? 0.24 : 0.2, height: 15e-4, tessellation: isHexa ? 12 : 8 }, scene);
+        pcbLayer.position.y = 2e-3;
+        const pcbMat = new PBRMaterial("pcbMat", scene);
+        pcbMat.metallic = 0.3;
+        pcbMat.roughness = 0.4;
+        pcbMat.albedoColor = new Color3(0.08, 0.42, 0.18);
+        pcbLayer.material = pcbMat;
+        pcbLayer.parent = bottomGroup;
+        for (let b = 0; b < armCount; b++) {
+          const ang0 = b * Math.PI * 2 / armCount;
+          const clamp = MeshBuilder.CreateBox("clamp_" + b, { width: 0.038, height: 0.016, depth: 0.028 }, scene);
+          clamp.position.set(Math.cos(ang0) * 0.085, 9e-3, Math.sin(ang0) * 0.085);
+          clamp.rotation.y = -ang0 + Math.PI / 2;
+          clamp.material = redCncMat;
+          clamp.parent = bottomGroup;
+          [-0.012, 0.012].forEach((sx, si) => {
+            const bolt = MeshBuilder.CreateCylinder("bolt_" + b + "_" + si, { diameter: 55e-4, height: 4e-3 }, scene);
+            bolt.position.set(clamp.position.x + sx * 0.5, 0.018, clamp.position.z);
+            bolt.material = steelMat;
+            bolt.parent = bottomGroup;
+          });
+        }
       }
       PARTS.push({
         id: 1,
         key: "chasis_inf",
         category: "ESTRUCTURA Y DISTRIBUCI\xD3N EL\xC9CTRICA",
-        shortTag: "\u{1F4D0} CHASIS INF. + PDB",
-        name: isHexa ? "Chasis Central Tarot 680 Hexa + PDB 250A" : "Placa Inferior ZD550 3K + PDB 160A",
-        material: "Fibra de Carbono 3K (2.0mm) + Placa Cobre FR-4 Grado Militar",
-        specs: { peso: "285g", corrienteMax: "160A", rigidez: "Torsi\xF3n > 12 Nm/\xB0", tornilleria: "16x Tornillos M3x8mm Titanio Grado 5" },
-        desc: "Placa portante estructural que canaliza la distribuci\xF3n de alta potencia y sujeta los brazos.",
-        errorReal: "Si se usa un chasis de baja rigidez o fibra barata (G10), la vibraci\xF3n de los motores saturar\xE1 los giroscopios del autopiloto, haciendo imposible el vuelo estacionario. Adem\xE1s, una PDB sin filtro LC inducir\xE1 ruido el\xE9ctrico severo.",
+        shortTag: isRacer ? "\u{1F4D0} CHASIS RACER4 3K" : "\u{1F4D0} CHASIS INF. + PDB",
+        name: isRacer ? "Chasis Monocasco DRL Racer4 de Competici\xF3n en Carbono 3K" : isHexa ? "Chasis Central Tarot 680 Hexa + PDB 250A" : "Placa Inferior ZD550 3K + PDB 160A",
+        material: "Fibra de Carbono 3K (4.0mm Biselado) + PDB Integrada de Cobre Pesado 2oz",
+        specs: isRacer ? { geometria: "True-X 220mm", espesor: "4.0mm Unibody Carbono 3K", peso: "142g", tornilleria: "Titanio Grado 5 Torx M3" } : { peso: "285g", corrienteMax: "160A", rigidez: "Torsi\xF3n > 12 Nm/\xB0", tornilleria: "16x Tornillos M3x8mm Titanio Grado 5" },
+        desc: isRacer ? "Placa portante ultraligera monocasco con bajo centro de masa para carreras FPV de alta velocidad." : "Placa portante estructural que canaliza la distribuci\xF3n de alta potencia y sujeta los brazos.",
+        errorReal: "Si el carbono carece de rigidez o tiene delaminaci\xF3n, las vibraciones de alta frecuencia saturar\xE1n el filtro notch del giroscopio, provocando sobrecalentamiento destructivo de los motores.",
         group: bottomGroup,
-        benchPos: new Vector3(-0.85, 0.025, -0.32),
+        benchPos: new Vector3(-0.95, 0.025, -0.32),
         assembledPos: new Vector3(0, 0, 0),
         inspectPos: new Vector3(-0.15, 0.25, -0.2),
         isAssembled: false
@@ -378320,33 +378645,50 @@ var DronComponent = class {
         const ang = b * Math.PI * 2 / armCount;
         const aNode = new TransformNode("armNode_" + b, scene);
         aNode.parent = armGroup;
-        const tube = MeshBuilder.CreateCylinder("armTube_" + b, { height: isHexa ? 0.28 : 0.22, diameter: 0.02, tessellation: 20 }, scene);
-        tube.rotation.z = Math.PI / 2;
-        tube.position.x = isHexa ? 0.14 : 0.11;
-        tube.material = carbonMat;
-        tube.parent = aNode;
-        const mount = MeshBuilder.CreateCylinder("mount_" + b, { diameter: 0.055, height: 8e-3, tessellation: 20 }, scene);
-        mount.position.set(isHexa ? 0.28 : 0.22, 5e-3, 0);
-        mount.material = redCncMat;
-        mount.parent = aNode;
-        const esc = MeshBuilder.CreateBox("esc_" + b, { width: 0.055, height: 0.012, depth: 0.026 }, scene);
-        esc.position.set(0.12, -0.014, 0);
-        esc.material = steelMat;
-        esc.parent = aNode;
+        if (isRacer) {
+          const armStrut = MeshBuilder.CreateBox("armStrut_" + b, { width: 0.14, height: 0.01, depth: 0.024 }, scene);
+          armStrut.position.x = 0.085;
+          armStrut.material = carbonMat;
+          armStrut.parent = aNode;
+          for (let ld = 0; ld < 6; ld++) {
+            const dot = MeshBuilder.CreateSphere("ledDot_" + b + "_" + ld, { diameter: 5e-3 }, scene);
+            dot.position.set(0.038 + ld * 0.018, 6e-3, 0);
+            dot.material = ledDotMat;
+            dot.parent = aNode;
+          }
+          const motorPlate = MeshBuilder.CreateCylinder("mPlate_" + b, { diameter: 0.036, height: 5e-3 }, scene);
+          motorPlate.position.set(armRadius, 2e-3, 0);
+          motorPlate.material = carbonMat;
+          motorPlate.parent = aNode;
+        } else {
+          const tube = MeshBuilder.CreateCylinder("armTube_" + b, { height: isHexa ? 0.28 : 0.22, diameter: 0.02, tessellation: 20 }, scene);
+          tube.rotation.z = Math.PI / 2;
+          tube.position.x = isHexa ? 0.14 : 0.11;
+          tube.material = carbonMat;
+          tube.parent = aNode;
+          const mount = MeshBuilder.CreateCylinder("mount_" + b, { diameter: 0.055, height: 8e-3, tessellation: 20 }, scene);
+          mount.position.set(isHexa ? 0.28 : 0.22, 5e-3, 0);
+          mount.material = redCncMat;
+          mount.parent = aNode;
+          const esc = MeshBuilder.CreateBox("esc_" + b, { width: 0.055, height: 0.012, depth: 0.026 }, scene);
+          esc.position.set(0.12, -0.014, 0);
+          esc.material = steelMat;
+          esc.parent = aNode;
+        }
         aNode.rotation.y = ang;
       }
       PARTS.push({
         id: 2,
         key: "brazos_esc",
         category: "PROPULSI\xD3N Y VARIADORES DE VELOCIDAD",
-        shortTag: `\u{1F962} ${armCount} BRAZOS + ESCs 40A`,
-        name: `${armCount} Brazos Tubulares \xD820mm + Variadores ESC BLHeli_32`,
-        material: "Fibra de Carbono Mate 3K Tejido Twill + Abrazaderas CNC 6061-T6",
-        specs: { tubos: `${armCount}x \xD820mm x 220mm`, esc: "40A Continuo / 55A Pico (3-6S DShot1200)", frecuencia: "48 kHz PWM", peso: `${armCount * 45}g` },
-        desc: "Alojan el cableado interno y los ESC con disipador de aluminio y protocolo digital DShot.",
-        errorReal: "Si los ESCs no soportan la corriente pico (m\xEDnimo 40A) o pierden sincronizaci\xF3n (desync), un motor se apagar\xE1 en pleno vuelo, provocando la p\xE9rdida total de control y colisi\xF3n instant\xE1nea.",
+        shortTag: isRacer ? "\u{1F962} 4 BRAZOS + LEDS BLANCOS" : `\u{1F962} ${armCount} BRAZOS + ESCs 40A`,
+        name: isRacer ? "4 Brazos R\xEDgidos Monocasco con Micro-Matriz de LEDs de Carrera + ESCs 55A" : `${armCount} Brazos Tubulares \xD820mm + Variadores ESC BLHeli_32`,
+        material: "Fibra de Carbono Mate 3K Tejido Twill + Difusores LED Acr\xEDlicos",
+        specs: isRacer ? { esc: "55A 4-in-1 DShot1200 BLHeli_32", leds: "24x LEDs Blancos DRL de Alta Luminosidad", frecuencia: "48 kHz PWM", peso: "98g" } : { tubos: `${armCount}x \xD820mm x 220mm`, esc: "40A Continuo / 55A Pico (3-6S DShot1200)", frecuencia: "48 kHz PWM", peso: `${armCount * 45}g` },
+        desc: isRacer ? "Brazos perfilados de competici\xF3n con iluminaci\xF3n perimetral para seguimiento visual a 120 km/h." : "Alojan el cableado interno y los ESC con disipador de aluminio y protocolo digital DShot.",
+        errorReal: "Si los ESCs pierden sincronizaci\xF3n (desync) a pleno gas, el dron sufrir\xE1 un bloqueo de motor instant\xE1neo en el aire.",
         group: armGroup,
-        benchPos: new Vector3(0.85, 0.025, -0.32),
+        benchPos: new Vector3(0.95, 0.025, -0.32),
         assembledPos: new Vector3(0, 0, 0),
         inspectPos: new Vector3(0.15, 0.25, -0.2),
         isAssembled: false
@@ -378358,22 +378700,25 @@ var DronComponent = class {
         const mNode = new TransformNode("mNode_" + b, scene);
         mNode.parent = motorGroup;
         mNode.position.set(Math.cos(ang) * armRadius, 0.014, Math.sin(ang) * armRadius);
-        const base = MeshBuilder.CreateCylinder("base_" + b, { diameter: 0.05, height: 6e-3 }, scene);
+        const baseDia = isRacer ? 0.032 : 0.05;
+        const base = MeshBuilder.CreateCylinder("base_" + b, { diameter: baseDia, height: 5e-3 }, scene);
         base.material = steelMat;
         base.parent = mNode;
-        for (let c = 0; c < 12; c++) {
-          const ca = c * Math.PI * 2 / 12;
-          const coil = MeshBuilder.CreateCylinder("coil_" + b + "_" + c, { diameter: 9e-3, height: 0.014 }, scene);
-          coil.position.set(Math.cos(ca) * 0.018, 8e-3, Math.sin(ca) * 0.018);
+        const coilCount = isRacer ? 12 : 12;
+        for (let c = 0; c < coilCount; c++) {
+          const ca = c * Math.PI * 2 / coilCount;
+          const coil = MeshBuilder.CreateCylinder("coil_" + b + "_" + c, { diameter: isRacer ? 6e-3 : 9e-3, height: isRacer ? 0.01 : 0.014 }, scene);
+          coil.position.set(Math.cos(ca) * (baseDia * 0.35), 6e-3, Math.sin(ca) * (baseDia * 0.35));
           coil.material = copperMat;
           coil.parent = mNode;
         }
-        const bell = MeshBuilder.CreateCylinder("bell_" + b, { diameter: 0.052, height: 0.019 }, scene);
-        bell.position.y = 0.015;
-        bell.material = redCncMat;
+        const bellDia = isRacer ? 0.034 : 0.052;
+        const bell = MeshBuilder.CreateCylinder("bell_" + b, { diameter: bellDia, height: isRacer ? 0.014 : 0.019 }, scene);
+        bell.position.y = 0.012;
+        bell.material = isRacer ? steelMat : redCncMat;
         bell.parent = mNode;
-        const shaft = MeshBuilder.CreateCylinder("shaft_" + b, { diameter: 6e-3, height: 0.028 }, scene);
-        shaft.position.y = 0.025;
+        const shaft = MeshBuilder.CreateCylinder("shaft_" + b, { diameter: 5e-3, height: 0.024 }, scene);
+        shaft.position.y = 0.022;
         shaft.material = steelMat;
         shaft.parent = mNode;
       }
@@ -378381,105 +378726,158 @@ var DronComponent = class {
         id: 3,
         key: "motores",
         category: "PLANTA MOTRIZ ELECTROMAGN\xC9TICA",
-        shortTag: `\u2699\uFE0F ${armCount} MOTORES 5010 750KV`,
-        name: `${armCount} Motores Brushless Outrunner 5010 750KV Grado Industrial`,
-        material: "Cuerpo Aluminio 7075-T6 + 14 Imanes Neodimio N45SH + Hilo Cobre OFC",
-        specs: { kv: "750 RPM/V", potencia: "550W / motor", empujeMax: `${armCount * 1250}g total`, corrientePico: "35A por motor", rodamientos: "Japoneses NMB" },
-        desc: "Produce tracci\xF3n constante. Imanes curvos para m\xEDnimo cogging y m\xE1xima eficiencia g/W.",
-        errorReal: "Si se montan motores con KV excesivo (>950KV) con palas de 12'', demandar\xE1n m\xE1s de 45A, quemando el esmalte del bobinado de cobre por sobretemperatura. Si el KV es insuficiente (<500KV con 3S), el dron no lograr\xE1 levantar el vuelo.",
+        shortTag: isRacer ? "\u2699\uFE0F MOTORES 2207 1950KV" : `\u2699\uFE0F ${armCount} MOTORES 5010 750KV`,
+        name: isRacer ? "4 Motores Brushless DRL Racing 2207 1950KV (7566g Empuje Total)" : `${armCount} Motores Brushless Outrunner 5010 750KV Grado Industrial`,
+        material: "Cuerpo Aluminio 7075-T6 + 14 Imanes Neodimio N52H + Hilo Cobre OFC",
+        specs: isRacer ? { kv: "1950 RPM/V", empujeTotal: "7566g Pico (1890g/motor)", potenciaMax: "720W por motor", velocidadRotacion: "17,794 RPM @ 6S" } : { kv: "750 RPM/V", potencia: "550W / motor", empujeMax: `${armCount * 1250}g total`, corrientePico: "35A por motor", rodamientos: "Japoneses NMB" },
+        desc: isRacer ? "Motores de competici\xF3n FPV optimizados para respuesta explosiva de aceleraci\xF3n y 120+ km/h de velocidad punta." : "Produce tracci\xF3n constante. Imanes curvos para m\xEDnimo cogging y m\xE1xima eficiencia g/W.",
+        errorReal: "Si un rodamiento sufre holgura por impacto, provocar\xE1 desbalanceo din\xE1mico que descalibrar\xE1 el filtro girosc\xF3pico a 17,000 RPM.",
         group: motorGroup,
-        benchPos: new Vector3(-0.85, 0.025, 0.32),
+        benchPos: new Vector3(-0.95, 0.025, 0.32),
         assembledPos: new Vector3(0, 0, 0),
         inspectPos: new Vector3(-0.15, 0.28, -0.15),
         isAssembled: false
       });
       const fcGroup = new TransformNode("fcGroup", scene);
       fcGroup.parent = droneRoot;
-      const fcCase = MeshBuilder.CreateBox("fcCase", { width: 0.05, height: 0.016, depth: 0.082 }, scene);
-      fcCase.position.set(0, 0.016, 0);
-      fcCase.material = polymerMat;
-      fcCase.parent = fcGroup;
-      const mast = MeshBuilder.CreateCylinder("gpsMast", { diameter: 6e-3, height: 0.14 }, scene);
-      mast.position.set(0.045, 0.08, -0.045);
-      mast.material = carbonMat;
-      mast.parent = fcGroup;
-      const gpsPuck = MeshBuilder.CreateCylinder("gpsPuck", { diameter: 0.048, height: 0.014 }, scene);
-      gpsPuck.position.set(0.045, 0.15, -0.045);
-      gpsPuck.material = polymerMat;
-      gpsPuck.parent = fcGroup;
+      if (isRacer) {
+        const camPod = MeshBuilder.CreateBox("camPod", { width: 0.034, height: 0.034, depth: 0.032 }, scene);
+        camPod.position.set(0, 0.026, 0.088);
+        camPod.rotation.x = -0.35;
+        camPod.material = redCncMat;
+        camPod.parent = fcGroup;
+        const lens = MeshBuilder.CreateCylinder("fpvLens", { diameter: 0.02, height: 0.014 }, scene);
+        lens.rotation.x = Math.PI / 2;
+        lens.position.set(0, 0.026, 0.106);
+        const lensMat = new PBRMaterial("lensMat", scene);
+        lensMat.metallic = 0.95;
+        lensMat.roughness = 0.05;
+        lensMat.albedoColor = new Color3(0.04, 0.4, 0.9);
+        lens.material = lensMat;
+        lens.parent = fcGroup;
+        [-0.035, 0.035].forEach((ax, ai) => {
+          const antStem = MeshBuilder.CreateCylinder("fpvAntStem_" + ai, { diameter: 5e-3, height: 0.085 }, scene);
+          antStem.position.set(ax, 0.052, -0.092);
+          antStem.rotation.x = -0.65;
+          antStem.material = polymerMat;
+          antStem.parent = fcGroup;
+          const antPuck = MeshBuilder.CreateCylinder("fpvAntPuck_" + ai, { diameter: 0.022, height: 0.014 }, scene);
+          antPuck.position.set(ax, 0.082, -0.122);
+          antPuck.rotation.x = -0.65;
+          antPuck.material = polymerMat;
+          antPuck.parent = fcGroup;
+        });
+      } else {
+        const fcCase = MeshBuilder.CreateBox("fcCase", { width: 0.05, height: 0.016, depth: 0.082 }, scene);
+        fcCase.position.set(0, 0.016, 0);
+        fcCase.material = polymerMat;
+        fcCase.parent = fcGroup;
+        const mast = MeshBuilder.CreateCylinder("gpsMast", { diameter: 6e-3, height: 0.14 }, scene);
+        mast.position.set(0.045, 0.08, -0.045);
+        mast.material = carbonMat;
+        mast.parent = fcGroup;
+        const gpsPuck = MeshBuilder.CreateCylinder("gpsPuck", { diameter: 0.048, height: 0.014 }, scene);
+        gpsPuck.position.set(0.045, 0.15, -0.045);
+        gpsPuck.material = polymerMat;
+        gpsPuck.parent = fcGroup;
+      }
       PARTS.push({
         id: 4,
         key: "pixhawk_gps",
         category: "AVI\xD3NICA Y CONTROL DE NAVEGACI\xD3N",
-        shortTag: "\u{1F9E0} PIXHAWK + GPS NEO-M8N",
-        name: "Autopiloto de Vuelo Pixhawk 2.4.8 + M\xE1stil GPS/Br\xFAjula M8N",
-        material: "Carcasa Policarbonato UL94-V0 Antivibraci\xF3n + Antena Parche Cer\xE1mica",
-        specs: { procesador: "STM32F427 32-bit Cortex M4 (168 MHz)", imu: "MPU6000 + L3GD20 + LSM303D", barometro: "MS5611 (10cm precisi\xF3n)", puertos: "CAN, I2C, UART, Telemetr\xEDa" },
-        desc: "Cerebro de control aut\xF3nomo con triple redundancia de sensores y posicionamiento satelital.",
-        errorReal: "Si el m\xE1stil del GPS no est\xE1 elevado a m\xE1s de 10cm de los cables de alta potencia de la bater\xEDa, el campo electromagn\xE9tico corromper\xE1 el comp\xE1s digital (Compass EKF Error), provocando que el dron vuele err\xE1tico en 'Fly-Away'.",
+        shortTag: isRacer ? "\u{1F4F7} C\xC1MARA FPV + ANTENAS" : "\u{1F9E0} PIXHAWK + GPS NEO-M8N",
+        name: isRacer ? "C\xE1mara FPV 1200TVL Inclinable 35\xB0 + Doble Antena Pagoda 5.8GHz" : "Autopiloto de Vuelo Pixhawk 2.4.8 + M\xE1stil GPS/Br\xFAjula M8N",
+        material: "Carcasa CNC 6061-T6 + Lente Gran Angular 1.8mm + Antenas Polarizadas RHCP",
+        specs: isRacer ? { camara: "1200TVL 165\xB0 FOV Ultra WDR (0.0001 Lux)", vtx: "1000mW 5.8GHz 48CH SmartAudio", antenas: "2x Pagoda RHCP 2.5dBi Omnidireccional" } : { procesador: "STM32F427 32-bit Cortex M4 (168 MHz)", imu: "MPU6000 + L3GD20 + LSM303D", barometro: "MS5611 (10cm precisi\xF3n)", puertos: "CAN, I2C, UART, Telemetr\xEDa" },
+        desc: isRacer ? "Sistema de transmisi\xF3n de video de cero latencia para pilotaje inmersivo en primera persona." : "Cerebro de control aut\xF3nomo con triple redundancia de sensores y posicionamiento satelital.",
+        errorReal: "Si las antenas de video sufren sombraje por la bater\xEDa de carbono, se producir\xE1 p\xE9rdida de video instant\xE1nea (est\xE1tica) en maniobras r\xE1pidas.",
         group: fcGroup,
-        benchPos: new Vector3(0.85, 0.025, 0.32),
+        benchPos: new Vector3(0.95, 0.025, 0.32),
         assembledPos: new Vector3(0, 0, 0),
         inspectPos: new Vector3(0.15, 0.28, -0.15),
         isAssembled: false
       });
       const structGroup = new TransformNode("structGroup", scene);
       structGroup.parent = droneRoot;
-      const topPlate = MeshBuilder.CreateCylinder("topPlate", { diameter: isHexa ? 0.26 : 0.22, height: 2e-3, tessellation: isHexa ? 12 : 8 }, scene);
-      topPlate.position.set(0, 0.045, 0);
-      topPlate.material = carbonMat;
-      topPlate.parent = structGroup;
-      [
-        { x: -0.095, z: 0.08 },
-        { x: -0.095, z: -0.08 },
-        { x: 0.095, z: 0.08 },
-        { x: 0.095, z: -0.08 }
-      ].forEach((l, i) => {
-        const leg = MeshBuilder.CreateCylinder("leg_" + i, { diameter: 0.012, height: 0.22 }, scene);
-        leg.position.set(l.x, -0.105, l.z);
-        leg.rotation.z = l.x < 0 ? 0.32 : -0.32;
-        leg.material = carbonMat;
-        leg.parent = structGroup;
-        const tClamp = MeshBuilder.CreateBox("tclamp_" + i, { width: 0.02, height: 0.02, depth: 0.02 }, scene);
-        tClamp.position.set(l.x * 1.35, -0.21, l.z);
-        tClamp.material = redCncMat;
-        tClamp.parent = structGroup;
-      });
-      [-0.13, 0.13].forEach((sx, idx) => {
-        const skid = MeshBuilder.CreateCylinder("skid_" + idx, { diameter: 0.014, height: 0.36 }, scene);
-        skid.rotation.x = Math.PI / 2;
-        skid.position.set(sx, -0.21, 0);
-        skid.material = carbonMat;
-        skid.parent = structGroup;
-      });
+      if (isRacer) {
+        const canopy = MeshBuilder.CreateBox("canopy", { width: 0.088, height: 0.038, depth: 0.155 }, scene);
+        canopy.position.set(0, 0.034, 0);
+        canopy.material = carbonMat;
+        canopy.parent = structGroup;
+        const sharkFin = MeshBuilder.CreateCylinder("sharkFin", { diameterTop: 2e-3, diameterBottom: 0.065, height: 0.052, tessellation: 3 }, scene);
+        sharkFin.rotation.z = Math.PI / 2;
+        sharkFin.rotation.x = Math.PI / 2;
+        sharkFin.position.set(0, 0.068, -0.042);
+        sharkFin.material = carbonMat;
+        sharkFin.parent = structGroup;
+        for (let b = 0; b < armCount; b++) {
+          const ang = b * Math.PI * 2 / armCount;
+          const skid = MeshBuilder.CreateCylinder("skid_" + b, { diameter: 0.015, height: 0.012 }, scene);
+          skid.position.set(Math.cos(ang) * armRadius, -6e-3, Math.sin(ang) * armRadius);
+          skid.material = polymerMat;
+          skid.parent = structGroup;
+        }
+      } else {
+        const topPlate = MeshBuilder.CreateCylinder("topPlate", { diameter: isHexa ? 0.26 : 0.22, height: 2e-3, tessellation: isHexa ? 12 : 8 }, scene);
+        topPlate.position.set(0, 0.045, 0);
+        topPlate.material = carbonMat;
+        topPlate.parent = structGroup;
+        [
+          { x: -0.095, z: 0.08 },
+          { x: -0.095, z: -0.08 },
+          { x: 0.095, z: 0.08 },
+          { x: 0.095, z: -0.08 }
+        ].forEach((l, i) => {
+          const leg = MeshBuilder.CreateCylinder("leg_" + i, { diameter: 0.012, height: 0.22 }, scene);
+          leg.position.set(l.x, -0.105, l.z);
+          leg.rotation.z = l.x < 0 ? 0.32 : -0.32;
+          leg.material = carbonMat;
+          leg.parent = structGroup;
+          const tClamp = MeshBuilder.CreateBox("tclamp_" + i, { width: 0.02, height: 0.02, depth: 0.02 }, scene);
+          tClamp.position.set(l.x * 1.35, -0.21, l.z);
+          tClamp.material = redCncMat;
+          tClamp.parent = structGroup;
+        });
+        [-0.13, 0.13].forEach((sx, idx) => {
+          const skid = MeshBuilder.CreateCylinder("skid_" + idx, { diameter: 0.014, height: 0.36 }, scene);
+          skid.rotation.x = Math.PI / 2;
+          skid.position.set(sx, -0.21, 0);
+          skid.material = carbonMat;
+          skid.parent = structGroup;
+        });
+      }
       PARTS.push({
         id: 5,
         key: "chasis_sup",
-        category: "PROTECCI\xD3N ESTRUCTURAL Y TREN DE ATERRIZAJE",
-        shortTag: "\u{1F9BE} CHASIS SUP. + PATAS",
-        name: "Placa Superior 3K + Tren de Aterrizaje Reforzado",
-        material: "Placa Carbono 1.5mm + Tubos \xD812mm / \xD814mm Neopreno Antichoques",
-        specs: { despejeSuelo: "190mm para payload", peso: "195g", absorcion: "Espuma EPDM 55 Shore A", uniones: "Abrazaderas T en Aluminio 6061" },
-        desc: "Protege la electr\xF3nica interna y proporciona 19cm de despeje para el tanque extintor.",
-        errorReal: "Si el tren de aterrizaje es demasiado bajo (<15cm), el tanque de qu\xEDmico golpear\xE1 el suelo en tomas duras. Sin amortiguaci\xF3n el\xE1stica, el choque mec\xE1nico disparar\xE1 el sensor de colisi\xF3n 'Crash Check' del firmware apagando motores.",
+        category: "ESTRUCTURA Y AERODIN\xC1MICA SUPERIOR",
+        shortTag: isRacer ? "\u{1F9BE} CANOPY CENTRAL + ALETA" : "\u{1F9BE} CHASIS SUP. + PATAS",
+        name: isRacer ? "Canop\xEDa Aerodin\xE1mica DRL Racer4 con Aleta Dorsal de Tibur\xF3n" : "Placa Superior 3K + Tren de Aterrizaje Reforzado",
+        material: "Placa Carbono 3K + Policarbonato Moldeado al Vac\xEDo",
+        specs: isRacer ? { coeficienteArrastre: "Cx: 0.10 Ns/m", proteccion: "Carcasa Antivuelco (Turtle Mode)", peso: "46g" } : { despejeSuelo: "190mm para payload", peso: "195g", absorcion: "Espuma EPDM 55 Shore A", uniones: "Abrazaderas T en Aluminio 6061" },
+        desc: isRacer ? "Carcasa aerodin\xE1mica envolvente que minimiza la resistencia al avance y permite autorrecuperarse en caso de vuelco." : "Protege la electr\xF3nica interna y proporciona 19cm de despeje para el tanque extintor.",
+        errorReal: "Si la canopia o patas se rompen, el chasis absorber\xE1 todo el impacto directamente, destruyendo los componentes de control.",
         group: structGroup,
-        benchPos: new Vector3(-0.48, 0.025, 0.42),
+        benchPos: new Vector3(-0.95, 0.025, 0.32),
         assembledPos: new Vector3(0, 0, 0),
         inspectPos: new Vector3(0, 0.32, -0.18),
         isAssembled: false
       });
       const battGroup = new TransformNode("battGroup", scene);
       battGroup.parent = droneRoot;
-      const batt = MeshBuilder.CreateBox("battery", { width: 0.052, height: 0.038, depth: 0.145 }, scene);
-      batt.position.set(0, 0.065, 0);
+      const battW = isRacer ? 0.04 : 0.052;
+      const battH = isRacer ? 0.034 : 0.038;
+      const battD = isRacer ? 0.082 : 0.145;
+      const battY = isRacer ? -0.022 : 0.065;
+      const batt = MeshBuilder.CreateBox("battery", { width: battW, height: battH, depth: battD }, scene);
+      batt.position.set(0, battY, 0);
       batt.material = lipoMat;
       batt.parent = battGroup;
-      const bLabel = MeshBuilder.CreateBox("bLabel", { width: 0.053, height: 0.03, depth: 0.082 }, scene);
-      bLabel.position.set(0, 0.065, 0);
+      const bLabel = MeshBuilder.CreateBox("bLabel", { width: battW + 1e-3, height: battH * 0.8, depth: battD * 0.65 }, scene);
+      bLabel.position.set(0, battY, 0);
       bLabel.material = lipoLabelMat;
       bLabel.parent = battGroup;
-      const xt60 = MeshBuilder.CreateBox("xt60", { width: 0.018, height: 0.011, depth: 0.018 }, scene);
-      xt60.position.set(0, 0.082, 0.098);
+      const xt60 = MeshBuilder.CreateBox("xt60", { width: 0.016, height: 0.01, depth: 0.016 }, scene);
+      xt60.position.set(0, battY + 0.018, battD * 0.55);
       const xt60Mat = new PBRMaterial("xt60Mat", scene);
       xt60Mat.albedoColor = new Color3(0.95, 0.8, 0.05);
       xt60.material = xt60Mat;
@@ -378488,12 +378886,12 @@ var DronComponent = class {
         id: 6,
         key: "bateria_pila",
         category: "ALMACENAMIENTO DE ENERG\xCDA Y POTENCIA",
-        shortTag: "\u{1F50B} BATER\xCDA (PILA) LiPo 3S",
-        name: "Bater\xEDa de Pol\xEDmero de Litio (Pila Principal) 3S 5000mAh",
-        material: "3 Celdas LiCoO2 en Serie + Cables Silicona 12AWG + Conector XT60 Oro",
-        specs: { voltaje: "11.1V Nominal (12.6V M\xE1x)", capacidad: "5000 mAh (55.5 Wh)", descarga: "35C Continua (175A) / 70C R\xE1faga (350A)", peso: "420g", resistencia: "< 3.2 m\u03A9 por celda" },
-        desc: "Pila de alta descarga capaz de alimentar los motores a pleno r\xE9gimen durante m\xE1s de 18-22 minutos.",
-        errorReal: "Si se instala una bater\xEDa con baja tasa de descarga (<25C), sufrir\xE1 ca\xEDda brusca de tensi\xF3n (Voltage Sag) al acelerar fuertemente, activando el corte de seguridad por bater\xEDa baja (Battery Failsafe) antes de completar la misi\xF3n.",
+        shortTag: isRacer ? "\u{1F50B} LIPO 6S GRAPHENE" : "\u{1F50B} BATER\xCDA (PILA) LiPo 3S",
+        name: isRacer ? "Bater\xEDa LiPo Graphene 6S 22.2V 1400mAh 150C XT60" : "Bater\xEDa de Pol\xEDmero de Litio (Pila Principal) 3S 5000mAh",
+        material: isRacer ? "6 Celdas LiPo Grafeno en Serie + Cables Silicona 12AWG" : "3 Celdas LiCoO2 en Serie + Cables Silicona 12AWG + Conector XT60 Oro",
+        specs: isRacer ? { voltaje: "22.2V Nominal (25.2V M\xE1x)", capacidad: "1400 mAh (31 Wh)", descarga: "150C Continua (210A) / 300C R\xE1faga", peso: "228g" } : { voltaje: "11.1V Nominal (12.6V M\xE1x)", capacidad: "5000 mAh (55.5 Wh)", descarga: "35C Continua (175A) / 70C R\xE1faga (350A)", peso: "420g" },
+        desc: isRacer ? "Pila de competici\xF3n con nanoplacas de grafeno capaz de entregar 200+ Amperios instant\xE1neos sin ca\xEDda de voltaje." : "Pila de alta descarga capaz de alimentar los motores a pleno r\xE9gimen durante m\xE1s de 18-22 minutos.",
+        errorReal: "Si la bater\xEDa sufre perforaci\xF3n o se descarga por debajo de 3.2V por celda, entrar\xE1 en fuga t\xE9rmica (Thermal Runaway) con riesgo de ignici\xF3n violenta.",
         group: battGroup,
         benchPos: new Vector3(0.48, 0.025, 0.42),
         assembledPos: new Vector3(0, 0, 0),
@@ -378502,28 +378900,39 @@ var DronComponent = class {
       });
       const payloadGroup = new TransformNode("payloadGroup", scene);
       payloadGroup.parent = droneRoot;
-      const tankVol = isHexa ? 0.24 : 0.19;
-      const tank = MeshBuilder.CreateCylinder("tank", { diameter: 0.095, height: tankVol }, scene);
-      tank.rotation.z = Math.PI / 2;
-      tank.position.set(0, -0.075, 0);
-      tank.material = tankMat;
-      tank.parent = payloadGroup;
-      [-0.06, 0.06].forEach((nz, idx) => {
-        const noz = MeshBuilder.CreateCylinder("noz_" + idx, { diameterTop: 8e-3, diameterBottom: 0.015, height: 0.035 }, scene);
-        noz.position.set(0, -0.14, nz);
-        noz.material = brassMat;
-        noz.parent = payloadGroup;
-      });
+      if (isRacer) {
+        const transponder = MeshBuilder.CreateBox("transponder", { width: 0.038, height: 0.016, depth: 0.045 }, scene);
+        transponder.position.set(0, -0.015, -0.03);
+        transponder.material = redCncMat;
+        transponder.parent = payloadGroup;
+        const irLed = MeshBuilder.CreateSphere("irLed", { diameter: 9e-3 }, scene);
+        irLed.position.set(0, -0.024, -0.03);
+        irLed.material = ledDotMat;
+        irLed.parent = payloadGroup;
+      } else {
+        const tankVol = isHexa ? 0.24 : 0.19;
+        const tank = MeshBuilder.CreateCylinder("tank", { diameter: 0.095, height: tankVol }, scene);
+        tank.rotation.z = Math.PI / 2;
+        tank.position.set(0, -0.075, 0);
+        tank.material = tankMat;
+        tank.parent = payloadGroup;
+        [-0.06, 0.06].forEach((nz, idx) => {
+          const noz = MeshBuilder.CreateCylinder("noz_" + idx, { diameterTop: 8e-3, diameterBottom: 0.015, height: 0.035 }, scene);
+          noz.position.set(0, -0.14, nz);
+          noz.material = brassMat;
+          noz.parent = payloadGroup;
+        });
+      }
       PARTS.push({
         id: 7,
         key: "tanque_extintor",
-        category: "CARGA \xDATIL / PAYLOAD EXTINTOR",
-        shortTag: isHexa ? "\u{1F9EF} TANQUE EXTINTOR 2.0L" : "\u{1F9EF} TANQUE EXTINTOR 1.2L",
-        name: isHexa ? "Sistema Extintor Presurizado 2.0L AFFF" : "Tanque de Retardante Forestal 1.2L + Boquillas TeeJet",
-        material: "Aluminio 5052-H32 Ep\xF3xico + V\xE1lvula Solenoide 12V + Lat\xF3n Naval C36000",
-        specs: { volumen: isHexa ? "2.0 Litros" : "1.2 Litros", presion: "4.0 Bar (Nitr\xF3geno Seco)", boquillas: "2x Abanico Plano 110\xB0 TeeJet", pesoLleno: isHexa ? "2.45 kg" : "1.48 kg" },
-        desc: "Dispersa cortina de espuma retardante qu\xEDmica para supresi\xF3n inmediata de l\xEDneas de fuego.",
-        errorReal: "Si el tanque carece de deflectores internos anti-oleaje (anti-slosh), el l\xEDquido en movimiento desplazar\xE1 violentamente el Centro de Gravedad (CoG), haciendo que el autopiloto pierda estabilidad y entre en oscilaci\xF3n incontrolada.",
+        category: isRacer ? "CRONOMETRAJE Y TELEMETR\xCDA" : "CARGA \xDATIL / PAYLOAD EXTINTOR",
+        shortTag: isRacer ? "\u23F1\uFE0F TRANSPONDER DRL" : isHexa ? "\u{1F9EF} TANQUE EXTINTOR 2.0L" : "\u{1F9EF} TANQUE EXTINTOR 1.2L",
+        name: isRacer ? "Transponder Oficial DRL Racing + Sensor IR de Vuelta R\xE1pida" : isHexa ? "Sistema Extintor Presurizado 2.0L AFFF" : "Tanque de Retardante Forestal 1.2L + Boquillas TeeJet",
+        material: isRacer ? "Aluminio Anodizado 6061-T6 + Diodo Emisor Infrarrojo 940nm" : "Aluminio 5052-H32 Ep\xF3xico + V\xE1lvula Solenoide 12V",
+        specs: isRacer ? { precision: "Cronometraje a 1/1000 de segundo", peso: "14g", comunicacion: "Transmisi\xF3n RF + IR Dual" } : { volumen: isHexa ? "2.0 Litros" : "1.2 Litros", presion: "4.0 Bar" },
+        desc: isRacer ? "Registra el tiempo por vuelta y posici\xF3n en carrera a trav\xE9s de las puertas de paso (gates) de la DRL." : "Dispersa cortina de espuma retardante qu\xEDmica para supresi\xF3n inmediata de l\xEDneas de fuego.",
+        errorReal: "Si el transponder falla o se descalibra, los arcos de cronometraje no registrar\xE1n el paso del dron por el circuito.",
         group: payloadGroup,
         benchPos: new Vector3(-0.48, 0.025, -0.45),
         assembledPos: new Vector3(0, 0, 0),
@@ -378538,44 +378947,66 @@ var DronComponent = class {
         pNode.parent = propGroup;
         pNode.position.set(Math.cos(ang) * armRadius, 0.044, Math.sin(ang) * armRadius);
         const isCw = b % 2 === 0;
-        const tipMat = isCw ? propCwMat : propCcwMat;
-        const hub = MeshBuilder.CreateCylinder("hub_" + b, { diameter: 0.024, height: 0.014 }, scene);
-        hub.material = carbonMat;
-        hub.parent = pNode;
-        const blade1 = MeshBuilder.CreateBox("blade1_" + b, { width: 0.14, height: 3e-3, depth: 0.024 }, scene);
-        blade1.position.x = 0.075;
-        blade1.rotation.y = isCw ? -0.25 : 0.25;
-        blade1.material = carbonMat;
-        blade1.parent = pNode;
-        const tip1 = MeshBuilder.CreateBox("tip1_" + b, { width: 0.035, height: 35e-4, depth: 0.02 }, scene);
-        tip1.position.x = 0.13;
-        tip1.rotation.y = isCw ? -0.25 : 0.25;
-        tip1.material = tipMat;
-        tip1.parent = pNode;
-        const blade2 = MeshBuilder.CreateBox("blade2_" + b, { width: 0.14, height: 3e-3, depth: 0.024 }, scene);
-        blade2.position.x = -0.075;
-        blade2.rotation.y = isCw ? -0.25 : 0.25;
-        blade2.material = carbonMat;
-        blade2.parent = pNode;
-        const tip2 = MeshBuilder.CreateBox("tip2_" + b, { width: 0.035, height: 35e-4, depth: 0.02 }, scene);
-        tip2.position.x = -0.13;
-        tip2.rotation.y = isCw ? -0.25 : 0.25;
-        tip2.material = tipMat;
-        tip2.parent = pNode;
-        const nut = MeshBuilder.CreateCylinder("nut_" + b, { diameterTop: 3e-3, diameterBottom: 0.018, height: 0.02 }, scene);
-        nut.position.y = 0.012;
-        nut.material = redCncMat;
-        nut.parent = pNode;
+        if (isRacer) {
+          const hub = MeshBuilder.CreateCylinder("hub_" + b, { diameter: 0.018, height: 0.01 }, scene);
+          hub.material = steelMat;
+          hub.parent = pNode;
+          for (let p = 0; p < 3; p++) {
+            const bladeAng = p * Math.PI * 2 / 3;
+            const bladeNode = new TransformNode("bNode_" + b + "_" + p, scene);
+            bladeNode.parent = pNode;
+            bladeNode.rotation.y = bladeAng;
+            const blade = MeshBuilder.CreateBox("blade_" + b + "_" + p, { width: 0.076, height: 25e-4, depth: 0.016 }, scene);
+            blade.position.x = 0.04;
+            blade.rotation.y = isCw ? -0.32 : 0.32;
+            blade.material = propWhiteMat;
+            blade.parent = bladeNode;
+          }
+          const nut = MeshBuilder.CreateCylinder("nut_" + b, { diameterTop: 4e-3, diameterBottom: 0.014, height: 0.012 }, scene);
+          nut.position.y = 9e-3;
+          nut.material = steelMat;
+          nut.parent = pNode;
+        } else {
+          const tipMat = isCw ? propCwMat : propCcwMat;
+          const hub = MeshBuilder.CreateCylinder("hub_" + b, { diameter: 0.024, height: 0.014 }, scene);
+          hub.material = carbonMat;
+          hub.parent = pNode;
+          const blade1 = MeshBuilder.CreateBox("blade1_" + b, { width: 0.14, height: 3e-3, depth: 0.024 }, scene);
+          blade1.position.x = 0.075;
+          blade1.rotation.y = isCw ? -0.25 : 0.25;
+          blade1.material = carbonMat;
+          blade1.parent = pNode;
+          const tip1 = MeshBuilder.CreateBox("tip1_" + b, { width: 0.035, height: 35e-4, depth: 0.02 }, scene);
+          tip1.position.x = 0.13;
+          tip1.rotation.y = isCw ? -0.25 : 0.25;
+          tip1.material = tipMat;
+          tip1.parent = pNode;
+          const blade2 = MeshBuilder.CreateBox("blade2_" + b, { width: 0.14, height: 3e-3, depth: 0.024 }, scene);
+          blade2.position.x = -0.075;
+          blade2.rotation.y = isCw ? -0.25 : 0.25;
+          blade2.material = carbonMat;
+          blade2.parent = pNode;
+          const tip2 = MeshBuilder.CreateBox("tip2_" + b, { width: 0.035, height: 35e-4, depth: 0.02 }, scene);
+          tip2.position.x = -0.13;
+          tip2.rotation.y = isCw ? -0.25 : 0.25;
+          tip2.material = tipMat;
+          tip2.parent = pNode;
+          const nut = MeshBuilder.CreateCylinder("nut_" + b, { diameterTop: 3e-3, diameterBottom: 0.018, height: 0.02 }, scene);
+          nut.position.y = 0.012;
+          nut.material = redCncMat;
+          nut.parent = pNode;
+        }
+        propNodes.push(pNode);
       }
       PARTS.push({
         id: 8,
         key: "helices",
-        category: "AERODIN\xC1MICA Y VECTOR DE EMPUJE",
-        shortTag: `\u{1F300} ${armCount} H\xC9LICES 12x4.5"`,
-        name: `Juego de ${armCount} H\xE9lices 12x4.5" CW (Naranja) y CCW (Azul)`,
-        material: "Fibra de Carbono Compuesta Reforzada + Tuercas Bala M6 Al 7075",
-        specs: { pasoDiametro: '12" de Di\xE1metro x 4.5" de Paso', traccionNominal: "1150g @ 6500 RPM", perfil: "Clark-Y Aerodin\xE1mico", balanceo: "Din\xE1mico ISO G2.5" },
-        desc: "Giro alternado (horario y antihorario) para cancelar el torque reactivo en vuelo.",
+        category: "AERODIN\xC1MICA Y PROPULSI\xD3N",
+        shortTag: isRacer ? "\u{1F300} 4 H\xC9LICES TRIPALA BLANCAS" : `\u{1F300} ${armCount} H\xC9LICES 12x4.5"`,
+        name: isRacer ? "Juego de 4 H\xE9lices Tripala 5x4.3x3 Competici\xF3n (Blanco Policarbonato)" : `Juego de ${armCount} H\xE9lices 12x4.5" CW (Naranja) y CCW (Azul)`,
+        material: isRacer ? "Policarbonato de Alto Impacto HQProp V1S" : "Fibra de Carbono Compuesta Reforzada + Tuercas Bala M6 Al 7075",
+        specs: isRacer ? { palas: "3 Palas por H\xE9lice (Tripala)", paso: '5" x 4.3" Geometr\xEDa Agresiva', traccion: "1890g / motor (7566g Total)", peso: "4.2g por h\xE9lice" } : { pasoDiametro: '12" de Di\xE1metro x 4.5" de Paso', traccionNominal: "1150g @ 6500 RPM", perfil: "Clark-Y Aerodin\xE1mico" },
+        desc: isRacer ? "H\xE9lices tripala de competici\xF3n con respuesta inmediata al acelerador y m\xE1xima tracci\xF3n en virajes." : "Giro alternado (horario y antihorario) para cancelar el torque reactivo en vuelo.",
         errorReal: "Si se invierte el sentido de giro de una h\xE9lice (poner CW en lugar de CCW), ese motor empujar\xE1 hacia el suelo en vez de hacia arriba, provocando un volteo catastr\xF3fico inmediato al despegar ('Flip of Death').",
         group: propGroup,
         benchPos: new Vector3(0.48, 0.025, -0.45),
@@ -378583,11 +379014,189 @@ var DronComponent = class {
         inspectPos: new Vector3(0, 0.28, -0.15),
         isAssembled: false
       });
+      navLeds = [];
+      const navLedsGroup = new TransformNode("navLedsGroup", scene);
+      navLedsGroup.parent = droneRoot;
+      const ledGreen = MeshBuilder.CreateSphere("ledGreen", { diameter: 0.016 }, scene);
+      ledGreen.position.set(Math.cos(0) * (armRadius + 0.025), 0.025, Math.sin(0) * (armRadius + 0.025));
+      ledGreen.material = ledGreenMat;
+      ledGreen.parent = navLedsGroup;
+      navLeds.push({ mesh: ledGreen, type: "green" });
+      const angRed = isHexa ? Math.PI * 2 / 3 : Math.PI / 2;
+      const ledRed = MeshBuilder.CreateSphere("ledRed", { diameter: 0.016 }, scene);
+      ledRed.position.set(Math.cos(angRed) * (armRadius + 0.025), 0.025, Math.sin(angRed) * (armRadius + 0.025));
+      ledRed.material = ledRedMat;
+      ledRed.parent = navLedsGroup;
+      navLeds.push({ mesh: ledRed, type: "red" });
+      const ledStrobe = MeshBuilder.CreateSphere("ledStrobe", { diameter: 0.02 }, scene);
+      ledStrobe.position.set(0, -0.19, -0.16);
+      ledStrobe.material = ledStrobeWhiteMat;
+      ledStrobe.parent = navLedsGroup;
+      navLeds.push({ mesh: ledStrobe, type: "strobe" });
+      buildAeroVisualizationSystem(armCount, armRadius);
+      [bottomGroup, armGroup, motorGroup, fcGroup, structGroup, battGroup, payloadGroup, propGroup].forEach(registerShadowCasters);
       create3DLabels();
-      resetWorkbench();
+      PARTS.forEach((p) => {
+        p.group.position.copyFrom(p.assembledPos);
+        p.group.rotation.set(0, 0, 0);
+        p.isAssembled = true;
+      });
+      hl.removeAllMeshes();
+      updateLabelsVisibility();
+      updateHUD();
     }
     __name(buildDroneComponents, "buildDroneComponents");
-    const ui = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    function buildAeroVisualizationSystem(armCount, armRadius) {
+      if (aeroSystemRoot) {
+        aeroSystemRoot.dispose();
+        aeroSystemRoot = null;
+      }
+      thrustVectorMeshes = [];
+      downwashVortices = [];
+      aeroSystemRoot = new TransformNode("aeroSystemRoot", scene);
+      aeroSystemRoot.parent = droneRoot;
+      const cogRoot = new TransformNode("cogRoot", scene);
+      cogRoot.parent = aeroSystemRoot;
+      cogRoot.position.set(0, 0.015, 0);
+      const cogCore = MeshBuilder.CreateSphere("cogCore", { diameter: 0.024, segments: 16 }, scene);
+      cogCore.material = aeroVectorMat;
+      cogCore.parent = cogRoot;
+      const axisLength = 0.16;
+      const axisXLines = MeshBuilder.CreateLines("axisXLines", {
+        points: [new Vector3(-axisLength, 0, 0), new Vector3(axisLength, 0, 0)]
+      }, scene);
+      axisXLines.color = new Color3(1, 0.2, 0.2);
+      axisXLines.parent = cogRoot;
+      const axisYLines = MeshBuilder.CreateLines("axisYLines", {
+        points: [new Vector3(0, -0.08, 0), new Vector3(0, axisLength, 0)]
+      }, scene);
+      axisYLines.color = new Color3(0.2, 1, 0.3);
+      axisYLines.parent = cogRoot;
+      const axisZLines = MeshBuilder.CreateLines("axisZLines", {
+        points: [new Vector3(0, 0, -axisLength), new Vector3(0, 0, axisLength)]
+      }, scene);
+      axisZLines.color = new Color3(0.2, 0.5, 1);
+      axisZLines.parent = cogRoot;
+      const ringPoints1 = [];
+      const ringPoints2 = [];
+      for (let i = 0; i <= 48; i++) {
+        const theta = i / 48 * Math.PI * 2;
+        ringPoints1.push(new Vector3(Math.cos(theta) * 0.085, 0, Math.sin(theta) * 0.085));
+        ringPoints2.push(new Vector3(Math.cos(theta) * 0.065, Math.sin(theta) * 0.065, 0));
+      }
+      const cogRing1 = MeshBuilder.CreateDashedLines("cogRing1", { points: ringPoints1, dashSize: 3, gapSize: 2 }, scene);
+      cogRing1.color = new Color3(0, 0.85, 1);
+      cogRing1.parent = cogRoot;
+      const cogRing2 = MeshBuilder.CreateDashedLines("cogRing2", { points: ringPoints2, dashSize: 3, gapSize: 2 }, scene);
+      cogRing2.color = new Color3(0, 0.85, 1);
+      cogRing2.parent = cogRoot;
+      const isHexa = activePrototypeId === "tarot680";
+      for (let b = 0; b < armCount; b++) {
+        const ang = b * Math.PI * 2 / armCount;
+        const px = Math.cos(ang) * armRadius;
+        const pz = Math.sin(ang) * armRadius;
+        const vNode = new TransformNode("thrustNode_" + b, scene);
+        vNode.position.set(px, 0.05, pz);
+        vNode.parent = aeroSystemRoot;
+        const shaft = MeshBuilder.CreateCylinder("thrustShaft_" + b, { diameter: 5e-3, height: 0.14 }, scene);
+        shaft.position.y = 0.07;
+        shaft.material = aeroVectorMat;
+        shaft.parent = vNode;
+        const tip = MeshBuilder.CreateCylinder("thrustTip_" + b, { diameterTop: 0, diameterBottom: 0.022, height: 0.035 }, scene);
+        tip.position.y = 0.155;
+        tip.material = aeroVectorMat;
+        tip.parent = vNode;
+        const thrustLabelAnchor = new TransformNode("thrustLabelAnchor_" + b, scene);
+        thrustLabelAnchor.parent = vNode;
+        thrustLabelAnchor.position.y = 0.19;
+        const tRect = new Rectangle("thrustTag_" + b);
+        tRect.width = "82px";
+        tRect.height = "22px";
+        tRect.cornerRadius = 4;
+        tRect.thickness = 1;
+        tRect.color = "#00e5ff";
+        tRect.background = "rgba(4, 14, 30, 0.88)";
+        tRect.isHitTestVisible = false;
+        const tTxt = new TextBlock();
+        const newtonsBase = isHexa ? "12.3 N" : "11.2 N";
+        tTxt.text = `\u2191 ${newtonsBase}`;
+        tTxt.color = "#00e5ff";
+        tTxt.fontSize = 10;
+        tTxt.fontStyle = "bold";
+        tRect.addControl(tTxt);
+        ui.addControl(tRect);
+        tRect.linkWithMesh(thrustLabelAnchor);
+        thrustVectorMeshes.push({ shaft, tip, label: tRect, baseHeight: 0.14 });
+        const vortexGroup = new TransformNode("vortexGroup_" + b, scene);
+        vortexGroup.position.set(px, 0.04, pz);
+        vortexGroup.parent = aeroSystemRoot;
+        for (let v = 0; v < 3; v++) {
+          const startAngle = v * Math.PI * 2 / 3;
+          const spiralPoints = [];
+          const steps = 36;
+          for (let s = 0; s <= steps; s++) {
+            const ratio = s / steps;
+            const y = -ratio * 0.38;
+            const r = 0.13 * (1 - ratio * 0.28);
+            const theta = startAngle + ratio * Math.PI * 4.5;
+            spiralPoints.push(new Vector3(Math.cos(theta) * r, y, Math.sin(theta) * r));
+          }
+          const vortexLine = MeshBuilder.CreateLines("vortex_" + b + "_" + v, { points: spiralPoints }, scene);
+          vortexLine.color = new Color3(0, 0.75, 1);
+          vortexLine.alpha = 0.65;
+          vortexLine.parent = vortexGroup;
+          downwashVortices.push(vortexLine);
+        }
+      }
+      const ringCount = isHexa ? 12 : 8;
+      const cagePointsTop = [];
+      const cagePointsBottom = [];
+      for (let i = 0; i <= ringCount; i++) {
+        const theta = i / ringCount * Math.PI * 2;
+        const r = armRadius * 1.25;
+        cagePointsTop.push(new Vector3(Math.cos(theta) * r, 0.22, Math.sin(theta) * r));
+        cagePointsBottom.push(new Vector3(Math.cos(theta) * r, -0.22, Math.sin(theta) * r));
+      }
+      const cageRingTop = MeshBuilder.CreateDashedLines("cageRingTop", { points: cagePointsTop, dashSize: 4, gapSize: 2 }, scene);
+      cageRingTop.color = new Color3(0.3, 0.6, 1);
+      cageRingTop.parent = aeroSystemRoot;
+      const cageRingBottom = MeshBuilder.CreateDashedLines("cageRingBottom", { points: cagePointsBottom, dashSize: 4, gapSize: 2 }, scene);
+      cageRingBottom.color = new Color3(0.3, 0.6, 1);
+      cageRingBottom.parent = aeroSystemRoot;
+      for (let b = 0; b < armCount; b++) {
+        const ang1 = b * Math.PI * 2 / armCount;
+        const ang2 = (b + 1) % armCount * Math.PI * 2 / armCount;
+        const p1 = new Vector3(Math.cos(ang1) * armRadius, 0.04, Math.sin(ang1) * armRadius);
+        const p2 = new Vector3(Math.cos(ang2) * armRadius, 0.04, Math.sin(ang2) * armRadius);
+        const pCenter = new Vector3(0, 0.08, 0);
+        const polyLine = MeshBuilder.CreateLines("constelPoly_" + b, {
+          points: [p1, pCenter, p2, p1]
+        }, scene);
+        polyLine.color = new Color3(0.4, 0.75, 1);
+        polyLine.alpha = 0.5;
+        polyLine.parent = aeroSystemRoot;
+        const nodeMarker = MeshBuilder.CreateBox("nodeMarker_" + b, { size: 0.012 }, scene);
+        nodeMarker.position.copyFrom(p1);
+        nodeMarker.rotation.y = Math.PI / 4;
+        nodeMarker.material = aeroVectorMat;
+        nodeMarker.parent = aeroSystemRoot;
+      }
+      const lidarRingPoints = [];
+      for (let i = 0; i <= 48; i++) {
+        const theta = i / 48 * Math.PI * 2;
+        lidarRingPoints.push(new Vector3(Math.cos(theta) * 0.32, -0.16, Math.sin(theta) * 0.32));
+      }
+      const lidarRing = MeshBuilder.CreateDashedLines("lidarRing", { points: lidarRingPoints, dashSize: 4, gapSize: 2 }, scene);
+      lidarRing.color = new Color3(0, 0.9, 0.5);
+      lidarRing.parent = aeroSystemRoot;
+      const lidarLaser = MeshBuilder.CreateLines("lidarLaser", {
+        points: [new Vector3(0, -0.08, 0), new Vector3(0, -0.16, 0)]
+      }, scene);
+      lidarLaser.color = new Color3(0, 1, 0.5);
+      lidarLaser.parent = aeroSystemRoot;
+      aeroSystemRoot.setEnabled(false);
+    }
+    __name(buildAeroVisualizationSystem, "buildAeroVisualizationSystem");
     let labelControls = [];
     function create3DLabels() {
       labelControls.forEach((l) => l.rect.dispose());
@@ -378637,7 +379246,6 @@ var DronComponent = class {
       const duration = 1050;
       hl.removeAllMeshes();
       part.group.getChildMeshes().forEach((m) => hl.addMesh(m, Color3.FromHexString("#00e5ff")));
-      showInspectionCard(part);
       const obs = scene.onBeforeRenderObservable.add(() => {
         const elapsed = performance.now() - startTime;
         const t = Math.min(elapsed / duration, 1);
@@ -378751,39 +379359,58 @@ var DronComponent = class {
     txtBreadcrumb.isHitTestVisible = false;
     txtBreadcrumb.isPointerBlocker = false;
     topBanner.addControl(txtBreadcrumb);
-    let isLightBg = true;
+    let isLightBg = false;
     const btnToggleBg = new Rectangle("btnToggleBg");
-    btnToggleBg.width = "175px";
+    btnToggleBg.width = "180px";
     btnToggleBg.height = "32px";
     btnToggleBg.cornerRadius = 6;
-    btnToggleBg.background = "#ffffff";
+    btnToggleBg.background = "#1e293b";
     btnToggleBg.color = "#00e5ff";
     btnToggleBg.thickness = 1.5;
     btnToggleBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-    btnToggleBg.left = "-20px";
+    btnToggleBg.left = "-175px";
     btnToggleBg.isPointerBlocker = true;
     btnToggleBg.hoverCursor = "pointer";
     const txtToggleBg = new TextBlock();
-    txtToggleBg.text = "\u2600\uFE0F Fondo Blanco Activo";
-    txtToggleBg.color = "#0f172a";
-    txtToggleBg.fontSize = 11;
+    txtToggleBg.text = "\u{1F319} Fondo Estudio Grafito";
+    txtToggleBg.color = "#ffffff";
+    txtToggleBg.fontSize = 10.5;
     txtToggleBg.fontStyle = "bold";
     btnToggleBg.addControl(txtToggleBg);
     topBanner.addControl(btnToggleBg);
+    const btnFullScreenShowroom = new Rectangle("btnFullScreenShowroom");
+    btnFullScreenShowroom.width = "145px";
+    btnFullScreenShowroom.height = "32px";
+    btnFullScreenShowroom.cornerRadius = 6;
+    btnFullScreenShowroom.background = "#0f172a";
+    btnFullScreenShowroom.color = "#38bdf8";
+    btnFullScreenShowroom.thickness = 1.5;
+    btnFullScreenShowroom.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    btnFullScreenShowroom.left = "-20px";
+    btnFullScreenShowroom.isPointerBlocker = true;
+    btnFullScreenShowroom.hoverCursor = "pointer";
+    const txtFSS = new TextBlock();
+    txtFSS.text = "\u26F6 Pantalla Completa";
+    txtFSS.color = "#38bdf8";
+    txtFSS.fontSize = 10.5;
+    txtFSS.fontStyle = "bold";
+    btnFullScreenShowroom.addControl(txtFSS);
+    btnFullScreenShowroom.onPointerClickObservable.add(toggleFullScreen);
+    topBanner.addControl(btnFullScreenShowroom);
     btnToggleBg.onPointerClickObservable.add(() => {
       isLightBg = !isLightBg;
       if (isLightBg) {
-        scene.clearColor = new Color4(0.93, 0.95, 0.98, 1);
-        txtToggleBg.text = "\u2600\uFE0F Fondo Blanco Activo";
-        txtToggleBg.color = "#0f172a";
-        btnToggleBg.background = "#ffffff";
-        pedestalMat.albedoColor = new Color3(0.96, 0.97, 0.99);
+        scene.clearColor = new Color4(0.22, 0.25, 0.3, 1);
+        txtToggleBg.text = "\u{1F3D9}\uFE0F Gris Pizarra Neutro";
+        txtToggleBg.color = "#ffffff";
+        btnToggleBg.background = "#334155";
+        pedestalMat.albedoColor = new Color3(0.24, 0.28, 0.34);
       } else {
-        scene.clearColor = new Color4(0.12, 0.15, 0.2, 1);
-        txtToggleBg.text = "\u{1F319} Fondo Oscuro Activo";
+        scene.clearColor = new Color4(0.08, 0.1, 0.14, 1);
+        txtToggleBg.text = "\u{1F319} Fondo Estudio Grafito";
         txtToggleBg.color = "#ffffff";
         btnToggleBg.background = "#1e293b";
-        pedestalMat.albedoColor = new Color3(0.2, 0.24, 0.3);
+        pedestalMat.albedoColor = new Color3(0.12, 0.14, 0.18);
       }
     });
     const btnNavPrev = new Rectangle("btnNavPrev");
@@ -379075,17 +379702,23 @@ var DronComponent = class {
     function showPartInShowroom(part) {
       currentInspectIndex = PARTS.indexOf(part);
       if (currentInspectIndex < 0) currentInspectIndex = 0;
-      scene.clearColor = isLightBg ? new Color4(0.93, 0.95, 0.98, 1) : new Color4(0.12, 0.15, 0.2, 1);
-      studioRim.intensity = 1.3;
-      studioKey.intensity = 1.45;
+      scene.clearColor = isLightBg ? new Color4(0.2, 0.23, 0.28, 1) : new Color4(0.08, 0.1, 0.14, 1);
+      studioRim.intensity = 0.85;
+      studioRim.diffuse = new Color3(0.65, 0.8, 1);
+      studioKey.intensity = 1.3;
+      studioFill.intensity = 0.7;
       scene.transformNodes.forEach((tn) => {
         if (tn.setEnabled) tn.setEnabled(true);
       });
       droneRoot.setEnabled(true);
       const targetMeshes = new Set(part.group.getChildMeshes());
       scene.meshes.forEach((m) => {
-        if (m.name.startsWith("tag_") || m.name.startsWith("labelAnchor")) return;
-        if (m === showroomPedestal) {
+        if (m.name.startsWith("tag_") || m.name.startsWith("labelAnchor") || m.name.startsWith("thrustTag")) {
+          m.setEnabled(false);
+          m.isVisible = false;
+          return;
+        }
+        if (m === showroomPedestal || m === pedestalRing) {
           m.setEnabled(true);
           m.isVisible = true;
           return;
@@ -379094,29 +379727,54 @@ var DronComponent = class {
         m.setEnabled(isTarget);
         m.isVisible = isTarget;
       });
+      const showroomYOffsets = {
+        1: 0.021,
+        // Chasis inf + PDB (apoya plana en la superficie)
+        2: 0.038,
+        // Brazos + ESCs
+        3: 0.024,
+        // Motores
+        4: 0.03,
+        // Pixhawk + GPS
+        5: 0.22,
+        // Chasis Sup + Patas
+        6: 0.032,
+        // Batería LiPo (apoyada perfectamente sobre el pedestal sin hundirse)
+        7: 0.16,
+        // Tanque Extintor / Transponder
+        8: 0.028
+        // Hélices
+      };
+      const targetY = showroomYOffsets[part.id] !== void 0 ? showroomYOffsets[part.id] : 0.025;
       PARTS.forEach((p, idx) => {
         if (idx === currentInspectIndex) {
           p.group.setEnabled(true);
-          p.group.position.set(0, 0, 0);
+          p.group.position.set(0, targetY, 0);
           p.group.rotation.set(0, 0, 0);
         } else {
           p.group.setEnabled(false);
         }
       });
-      const targetPos = new Vector3(-0.06, 0.16, 0.02);
-      const targetRadius = part.id === 1 || part.id === 2 || part.id === 5 || part.id === 8 ? 0.65 : 0.42;
+      const targetPos = part.id === 5 ? new Vector3(-0.06, 0.14, 0.02) : part.id === 4 || part.id === 7 ? new Vector3(-0.06, 0.08, 0.02) : new Vector3(-0.06, 0.04, 0.02);
+      const targetRadius = part.id === 5 ? 0.6 : part.id === 1 || part.id === 2 ? 0.48 : 0.28;
       scene.cameras.forEach((cam) => {
         if (cam instanceof ArcRotateCamera) {
           cam.setTarget(targetPos);
           cam.alpha = -Math.PI / 2;
-          cam.beta = 1.15;
+          cam.beta = 1.18;
           cam.radius = targetRadius;
+          cam.minZ = 5e-3;
+          cam.maxZ = 150;
+          cam.lowerRadiusLimit = 0.08;
         }
       });
       camera.setTarget(targetPos);
       camera.alpha = -Math.PI / 2;
-      camera.beta = 1.15;
+      camera.beta = 1.18;
       camera.radius = targetRadius;
+      camera.minZ = 5e-3;
+      camera.maxZ = 150;
+      camera.lowerRadiusLimit = 0.08;
       scene.activeCamera = camera;
       scene.activeCameras = [camera];
       txtBreadcrumb.text = `PROTOTIPO: ${activePrototypeId.toUpperCase()} > PIEZA ${currentInspectIndex + 1} DE ${PARTS.length}: ${part.shortTag}`;
@@ -379144,11 +379802,13 @@ var DronComponent = class {
         studioKey.intensity = 1.1;
         showroomPedestal.setEnabled(false);
         showroomPedestal.isVisible = false;
+        pedestalRing.setEnabled(false);
+        pedestalRing.isVisible = false;
         scene.transformNodes.forEach((tn) => {
           if (tn && tn.setEnabled) tn.setEnabled(true);
         });
         scene.meshes.forEach((m) => {
-          if (m === showroomPedestal) {
+          if (m === showroomPedestal || m === pedestalRing) {
             m.setEnabled(false);
             m.isVisible = false;
             return;
@@ -379163,28 +379823,30 @@ var DronComponent = class {
             p.group.rotation.set(0, 0, 0);
           }
         });
-        const returnTarget = new Vector3(0, 0.18, 0);
-        const returnRadius = lastWorkshopCamRadius && lastWorkshopCamRadius > 0.8 ? lastWorkshopCamRadius : 1.35;
+        const returnTarget = new Vector3(0, 0.12, 0.02);
+        const returnRadius = lastWorkshopCamRadius && lastWorkshopCamRadius > 0.8 && lastWorkshopCamRadius < 2.2 ? lastWorkshopCamRadius : 1.25;
         const returnAlpha = lastWorkshopCamAlpha || -Math.PI / 2;
-        const returnBeta = lastWorkshopCamBeta || Math.PI / 2.7;
+        const returnBeta = lastWorkshopCamBeta || Math.PI / 2.8;
         scene.cameras.forEach((cam) => {
           if (cam instanceof ArcRotateCamera) {
             cam.setTarget(returnTarget);
             cam.alpha = returnAlpha;
             cam.beta = returnBeta;
             cam.radius = returnRadius;
+            cam.minZ = 0.02;
           }
         });
         camera.setTarget(returnTarget);
         camera.alpha = returnAlpha;
         camera.beta = returnBeta;
         camera.radius = returnRadius;
+        camera.minZ = 0.02;
         scene.activeCamera = camera;
         scene.activeCameras = [camera];
-        hudCard.isVisible = true;
-        bottomBar.isVisible = true;
+        setWorkshopUIVisibility(true);
         updateLabelsVisibility();
         updateHUD();
+        thrustVectorMeshes.forEach((tv) => tv.label.isVisible = isAeroVisible && PARTS.every((p) => p.isAssembled));
       } catch (err) {
         console.error("Error al salir de showroom:", err);
       }
@@ -379231,6 +379893,16 @@ var DronComponent = class {
       }
     });
     function openPartInspectionScreen(part) {
+      if (isFlightMode) {
+        isFlightMode = false;
+        isLanding = false;
+        droneRoot.position.set(0, 0.16, 0.02);
+        droneRoot.rotation.set(0, 0, 0);
+        propSpinSpeed = 0;
+        flightHud.isVisible = false;
+      }
+      if (aeroSystemRoot) aeroSystemRoot.setEnabled(false);
+      thrustVectorMeshes.forEach((tv) => tv.label.isVisible = false);
       isIsolatedInspection = true;
       lastWorkshopCamTarget = camera.target.clone();
       lastWorkshopCamRadius = camera.radius;
@@ -379240,8 +379912,7 @@ var DronComponent = class {
         m.setEnabled(false);
         m.isVisible = false;
       });
-      hudCard.isVisible = false;
-      bottomBar.isVisible = false;
+      setWorkshopUIVisibility(false);
       labelControls.forEach((l) => l.rect.isVisible = false);
       showroomRoot.isVisible = true;
       buildCarouselButtons();
@@ -379275,22 +379946,47 @@ var DronComponent = class {
     diagResult.width = "430px";
     diagResult.top = "-5px";
     diagnosticModal.addControl(diagResult);
-    const btnCloseDiag = new Rectangle();
-    btnCloseDiag.width = "180px";
+    const btnCloseDiag = new Rectangle("btnCloseDiag");
+    btnCloseDiag.width = "160px";
     btnCloseDiag.height = "34px";
     btnCloseDiag.cornerRadius = 6;
     btnCloseDiag.background = "#162846";
     btnCloseDiag.color = "white";
     btnCloseDiag.top = "120px";
+    btnCloseDiag.left = "-115px";
     btnCloseDiag.isPointerBlocker = true;
+    btnCloseDiag.hoverCursor = "pointer";
     const bdText = new TextBlock();
     bdText.text = "Cerrar Diagn\xF3stico";
     bdText.color = "white";
     bdText.fontSize = 11;
+    bdText.isHitTestVisible = false;
     btnCloseDiag.addControl(bdText);
     diagnosticModal.addControl(btnCloseDiag);
+    const btnStartLiveFlight = new Rectangle("btnStartLiveFlight");
+    btnStartLiveFlight.width = "215px";
+    btnStartLiveFlight.height = "34px";
+    btnStartLiveFlight.cornerRadius = 6;
+    btnStartLiveFlight.background = "#15803d";
+    btnStartLiveFlight.color = "#86efac";
+    btnStartLiveFlight.thickness = 1.5;
+    btnStartLiveFlight.top = "120px";
+    btnStartLiveFlight.left = "105px";
+    btnStartLiveFlight.isPointerBlocker = true;
+    btnStartLiveFlight.hoverCursor = "pointer";
+    const bslfText = new TextBlock();
+    bslfText.text = "\u{1F680} Iniciar Vuelo en Vivo";
+    bslfText.color = "white";
+    bslfText.fontSize = 11;
+    bslfText.fontStyle = "bold";
+    bslfText.isHitTestVisible = false;
+    btnStartLiveFlight.addControl(bslfText);
+    diagnosticModal.addControl(btnStartLiveFlight);
     btnCloseDiag.onPointerClickObservable.add(() => {
       diagnosticModal.isVisible = false;
+    });
+    btnStartLiveFlight.onPointerClickObservable.add(() => {
+      startLiveFlight();
     });
     function runFlightDiagnostic() {
       diagnosticModal.isVisible = true;
@@ -379299,6 +379995,8 @@ var DronComponent = class {
         diagTitle.text = "\u274C FALLO CR\xCDTICO: PROTOTIPO INCOMPLETO";
         diagTitle.color = "#ff334b";
         diagnosticModal.color = "#ff334b";
+        btnStartLiveFlight.isVisible = false;
+        btnCloseDiag.left = "0px";
         const faltantes = PARTS.filter((p) => !p.isAssembled).map((p) => p.shortTag).join(", ");
         diagResult.text = `El dron no puede encender ni probarse en banco porque faltan piezas cr\xEDticas:
 
@@ -379307,6 +380005,8 @@ var DronComponent = class {
 \u26A0\uFE0F Consecuencia en la vida real: Si intentas arrancar sin todas las conexiones montadas, el controlador Pixhawk entrar\xE1 en error de 'PreArm Check' por circuito abierto o falta de alimentaci\xF3n.`;
         return;
       }
+      btnStartLiveFlight.isVisible = true;
+      btnCloseDiag.left = "-115px";
       const isHexa = activePrototypeId === "tarot680";
       const numMotores = isHexa ? 6 : 4;
       const pesoDron = isHexa ? 3.85 : 2.55;
@@ -379334,53 +380034,405 @@ var DronComponent = class {
 \u2022 Autonom\xEDa Estimada con LiPo 3S 5000mAh: ${autonomiaMin} Minutos
 \u2022 Margen de Seguridad de Variadores (ESCs 40A): 35% de holgura t\xE9rmica.
 
-\u{1F3C6} \xA1Este prototipo es aerodin\xE1micamente viable para construcci\xF3n f\xEDsica en laboratorio!`;
+\u{1F3C6} \xA1Este prototipo es aerodin\xE1micamente viable para vuelo real! Pulsa 'Iniciar Vuelo en Vivo'.`;
       }
     }
     __name(runFlightDiagnostic, "runFlightDiagnostic");
-    const hudCard = new Rectangle("hudCard");
-    hudCard.width = "540px";
-    hudCard.height = "105px";
-    hudCard.cornerRadius = 10;
-    hudCard.thickness = 1.5;
-    hudCard.color = "#00e5ff";
-    hudCard.background = "rgba(4, 10, 24, 0.95)";
-    hudCard.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-    hudCard.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    hudCard.top = "12px";
-    ui.addControl(hudCard);
-    const hudTitle = new TextBlock();
-    hudTitle.text = "SIMULADOR DE INGENIER\xCDA \u2022 ZD550 FORESTAL";
-    hudTitle.color = "#00e5ff";
-    hudTitle.fontSize = 11;
-    hudTitle.fontStyle = "bold";
-    hudTitle.top = "-36px";
-    hudCard.addControl(hudTitle);
-    const hudPieceName = new TextBlock();
-    hudPieceName.text = "\u{1F449} Toca cualquier pieza o letrero para ver especificaciones y montarla";
-    hudPieceName.color = "#ffffff";
-    hudPieceName.fontSize = 13;
-    hudPieceName.fontStyle = "bold";
-    hudPieceName.top = "-12px";
-    hudCard.addControl(hudPieceName);
-    const hudPieceDesc = new TextBlock();
-    hudPieceDesc.text = "Materiales PBR de alta fidelidad, c\xE1lculo de empuje y detecci\xF3n de errores de vuelo.";
-    hudPieceDesc.color = "#94a3b8";
-    hudPieceDesc.fontSize = 10;
-    hudPieceDesc.textWrapping = true;
-    hudPieceDesc.width = "510px";
-    hudPieceDesc.top = "16px";
-    hudCard.addControl(hudPieceDesc);
-    function showInspectionCard(part) {
-      hudTitle.text = "PIEZA SELECCIONADA: " + part.shortTag;
-      hudPieceName.text = part.name;
-      hudPieceDesc.text = "\u{1F52C} Material: " + part.material + " | \u2699\uFE0F Funci\xF3n: " + part.desc;
+    const flightHud = new Rectangle("flightHud");
+    flightHud.width = "420px";
+    flightHud.height = "165px";
+    flightHud.cornerRadius = 8;
+    flightHud.thickness = 1.5;
+    flightHud.color = "#00e5ff";
+    flightHud.background = "rgba(4, 12, 28, 0.94)";
+    flightHud.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    flightHud.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    flightHud.left = "20px";
+    flightHud.top = "20px";
+    flightHud.isVisible = false;
+    ui.addControl(flightHud);
+    const txtFlightTitle = new TextBlock();
+    txtFlightTitle.text = "\u{1F6F0}\uFE0F MIDRON AERO-TELEMETRY \u2022 VUELO EN VIVO";
+    txtFlightTitle.color = "#00e5ff";
+    txtFlightTitle.fontSize = 11;
+    txtFlightTitle.fontStyle = "bold";
+    txtFlightTitle.top = "-62px";
+    flightHud.addControl(txtFlightTitle);
+    const txtFlightAgl = new TextBlock();
+    txtFlightAgl.text = "ALTITUD AGL: 0.85 m";
+    txtFlightAgl.color = "#ffffff";
+    txtFlightAgl.fontSize = 11;
+    txtFlightAgl.fontStyle = "bold";
+    txtFlightAgl.top = "-38px";
+    flightHud.addControl(txtFlightAgl);
+    const txtFlightThrust = new TextBlock();
+    txtFlightThrust.text = "EMPUJE TOTAL: 44.8 N (6,500 RPM)";
+    txtFlightThrust.color = "#38bdf8";
+    txtFlightThrust.fontSize = 11;
+    txtFlightThrust.top = "-16px";
+    flightHud.addControl(txtFlightThrust);
+    const txtFlightBattery = new TextBlock();
+    txtFlightBattery.text = "BATER\xCDA: 11.8 V (3S) \u2022 24.2 A";
+    txtFlightBattery.color = "#4ade80";
+    txtFlightBattery.fontSize = 11;
+    txtFlightBattery.top = "6px";
+    flightHud.addControl(txtFlightBattery);
+    const txtFlightAttitude = new TextBlock();
+    txtFlightAttitude.text = "ACTITUD: P: 0.0\xB0 | R: 0.0\xB0 | Y: 0.0\xB0";
+    txtFlightAttitude.color = "#facc15";
+    txtFlightAttitude.fontSize = 10;
+    txtFlightAttitude.top = "28px";
+    flightHud.addControl(txtFlightAttitude);
+    const txtControlsHint = new TextBlock();
+    txtControlsHint.text = "\u2328\uFE0F [W/S] Cabeceo | [A/D] Alabeo | [ESPACIO/C] Altura | [Q/E] Giro";
+    txtControlsHint.color = "#94a3b8";
+    txtControlsHint.fontSize = 9;
+    txtControlsHint.top = "48px";
+    flightHud.addControl(txtControlsHint);
+    const btnLand = new Rectangle("btnLand");
+    btnLand.width = "180px";
+    btnLand.height = "26px";
+    btnLand.cornerRadius = 5;
+    btnLand.background = "#991b1b";
+    btnLand.color = "#fca5a5";
+    btnLand.thickness = 1;
+    btnLand.top = "70px";
+    btnLand.isPointerBlocker = true;
+    btnLand.hoverCursor = "pointer";
+    const txtLand = new TextBlock();
+    txtLand.text = "\u{1F6EC} Aterrizar en Banco";
+    txtLand.color = "white";
+    txtLand.fontSize = 10;
+    txtLand.fontStyle = "bold";
+    txtLand.isHitTestVisible = false;
+    btnLand.addControl(txtLand);
+    flightHud.addControl(btnLand);
+    btnLand.onPointerClickObservable.add(() => landDrone());
+    function startLiveFlight() {
+      const assembledCount = PARTS.filter((p) => p.isAssembled).length;
+      if (assembledCount < PARTS.length) {
+        PARTS.forEach((p) => {
+          p.group.position.copyFrom(p.assembledPos);
+          p.isAssembled = true;
+        });
+        updateLabelsVisibility();
+        updateHUD();
+      }
+      diagnosticModal.isVisible = false;
+      setWorkshopUIVisibility(false);
+      labelControls.forEach((l) => l.rect.isVisible = false);
+      isFlightMode = true;
+      isLanding = false;
+      flightStartTime = performance.now();
+      flightTargetY = 0.85;
+      if (aeroSystemRoot) aeroSystemRoot.setEnabled(isAeroVisible);
+      thrustVectorMeshes.forEach((tv) => tv.label.isVisible = isAeroVisible);
+      camera.setTarget(droneRoot.position.clone());
+      camera.radius = 1.65;
+      camera.alpha = -Math.PI / 2;
+      camera.beta = 1.25;
+      flightHud.isVisible = true;
     }
-    __name(showInspectionCard, "showInspectionCard");
-    const bottomBar = new Rectangle("bottomBar");
-    bottomBar.width = "640px";
-    bottomBar.height = "64px";
-    bottomBar.cornerRadius = 10;
+    __name(startLiveFlight, "startLiveFlight");
+    function landDrone() {
+      if (!isFlightMode || isLanding) return;
+      isLanding = true;
+    }
+    __name(landDrone, "landDrone");
+    topNavRibbon = new Rectangle("topNavRibbon");
+    topNavRibbon.width = "820px";
+    topNavRibbon.height = "42px";
+    topNavRibbon.cornerRadius = 8;
+    topNavRibbon.thickness = 1;
+    topNavRibbon.color = "rgba(0, 229, 255, 0.4)";
+    topNavRibbon.background = "rgba(6, 12, 28, 0.94)";
+    topNavRibbon.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    topNavRibbon.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    topNavRibbon.top = "12px";
+    ui.addControl(topNavRibbon);
+    const navStack = new StackPanel();
+    navStack.isVertical = false;
+    navStack.height = "100%";
+    topNavRibbon.addControl(navStack);
+    const navCategories = [
+      { label: "\u{1F4D0} FRAMES", partId: 1 },
+      { label: "\u2699\uFE0F MOTORS", partId: 3 },
+      { label: "\u{1F300} PROPS", partId: 8 },
+      { label: "\u{1F50B} LIPOS", partId: 6 },
+      { label: "\u{1F9E0} EXTRAS", partId: 4 },
+      { label: "\u{1F3A8} COLOR", partId: 5 },
+      { label: "\u{1F4BE} GUARDAR", partId: -1 }
+    ];
+    navCategories.forEach((cat, ci) => {
+      const btnCat = new Rectangle("navCat_" + ci);
+      btnCat.width = "112px";
+      btnCat.height = "32px";
+      btnCat.cornerRadius = 6;
+      btnCat.thickness = 1;
+      btnCat.color = ci === 0 ? "#00e5ff" : "rgba(255,255,255,0.2)";
+      btnCat.background = ci === 0 ? "rgba(0, 160, 220, 0.4)" : "rgba(15, 23, 42, 0.8)";
+      btnCat.left = "2px";
+      btnCat.isPointerBlocker = true;
+      btnCat.hoverCursor = "pointer";
+      const txtCat = new TextBlock();
+      txtCat.text = cat.label;
+      txtCat.color = ci === 0 ? "#ffffff" : "#94a3b8";
+      txtCat.fontSize = 10.5;
+      txtCat.fontStyle = "bold";
+      btnCat.addControl(txtCat);
+      btnCat.onPointerClickObservable.add(() => {
+        if (cat.partId > 0) {
+          const p = PARTS.find((x) => x.id === cat.partId);
+          if (p) openPartInspectionScreen(p);
+        } else if (cat.label.includes("GUARDAR")) {
+          txtCat.text = "\u2713 GUARDADO";
+          setTimeout(() => txtCat.text = cat.label, 1200);
+        }
+      });
+      navStack.addControl(btnCat);
+    });
+    btnFullScreen = new Rectangle("btnFullScreen");
+    btnFullScreen.width = "165px";
+    btnFullScreen.height = "38px";
+    btnFullScreen.cornerRadius = 8;
+    btnFullScreen.background = "rgba(10, 20, 38, 0.92)";
+    btnFullScreen.color = "#00e5ff";
+    btnFullScreen.thickness = 1.5;
+    btnFullScreen.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    btnFullScreen.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    btnFullScreen.left = "-20px";
+    btnFullScreen.top = "12px";
+    btnFullScreen.isPointerBlocker = true;
+    btnFullScreen.hoverCursor = "pointer";
+    const txtFullScreen = new TextBlock();
+    txtFullScreen.text = "\u26F6 Pantalla Completa (F11)";
+    txtFullScreen.color = "#38bdf8";
+    txtFullScreen.fontSize = 10.5;
+    txtFullScreen.fontStyle = "bold";
+    btnFullScreen.addControl(txtFullScreen);
+    btnFullScreen.onPointerClickObservable.add(toggleFullScreen);
+    ui.addControl(btnFullScreen);
+    telemetryCard = new Rectangle("telemetryCard");
+    telemetryCard.width = "250px";
+    telemetryCard.height = "420px";
+    telemetryCard.cornerRadius = 10;
+    telemetryCard.thickness = 1.5;
+    telemetryCard.color = "#00e5ff";
+    telemetryCard.background = "rgba(6, 12, 28, 0.94)";
+    telemetryCard.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    telemetryCard.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+    telemetryCard.left = "20px";
+    telemetryCard.isPointerBlocker = true;
+    ui.addControl(telemetryCard);
+    const tStack = new StackPanel();
+    tStack.width = "225px";
+    tStack.top = "10px";
+    tStack.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    telemetryCard.addControl(tStack);
+    const tTitle = new TextBlock();
+    tTitle.text = "DRL RACER4 \u2022 PRO FPV";
+    tTitle.color = "#00e5ff";
+    tTitle.fontSize = 12;
+    tTitle.fontStyle = "bold";
+    tTitle.height = "22px";
+    tTitle.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    tStack.addControl(tTitle);
+    const tMode = new TextBlock();
+    tMode.text = "\u25CF SIMULADOR DE INGENIER\xCDA 3D";
+    tMode.color = "#34d399";
+    tMode.fontSize = 9.5;
+    tMode.fontStyle = "bold";
+    tMode.height = "16px";
+    tMode.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    tStack.addControl(tMode);
+    const rowSpecs = {};
+    const specKeys = [
+      { label: "THRUST (EMPUJE)", key: "thrust", defaultVal: "7566 g" },
+      { label: "WEIGHT (PESO)", key: "weight", defaultVal: "1286 g" },
+      { label: "TOP SPEED", key: "speed", defaultVal: "123 kph" },
+      { label: "TORQUE", key: "torque", defaultVal: "1.05 Nm" },
+      { label: "DRAG MODEL", key: "drag", defaultVal: "0.10 Ns/m" },
+      { label: "MAX RPM", key: "rpm", defaultVal: "17794" },
+      { label: "PEAK TEMP", key: "temp", defaultVal: "32 \xB0C" }
+    ];
+    specKeys.forEach((s) => {
+      const row = new Rectangle();
+      row.height = "24px";
+      row.thickness = 0;
+      const lbl = new TextBlock();
+      lbl.text = s.label;
+      lbl.color = "#94a3b8";
+      lbl.fontSize = 10;
+      lbl.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+      row.addControl(lbl);
+      const val = new TextBlock();
+      val.text = s.defaultVal;
+      val.color = "#ffffff";
+      val.fontSize = 10.5;
+      val.fontStyle = "bold";
+      val.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+      row.addControl(val);
+      rowSpecs[s.key] = val;
+      tStack.addControl(row);
+    });
+    const aeroTag = new Rectangle("aeroTag");
+    aeroTag.width = "225px";
+    aeroTag.height = "28px";
+    aeroTag.cornerRadius = 4;
+    aeroTag.thickness = 0;
+    aeroTag.background = "#eab308";
+    aeroTag.top = "8px";
+    const txtAeroTag = new TextBlock();
+    txtAeroTag.text = "UNSTEADY DRAG MODEL \u224B DRL";
+    txtAeroTag.color = "#000000";
+    txtAeroTag.fontSize = 10;
+    txtAeroTag.fontStyle = "bold";
+    aeroTag.addControl(txtAeroTag);
+    tStack.addControl(aeroTag);
+    const tActionRow = new StackPanel();
+    tActionRow.isVertical = false;
+    tActionRow.height = "38px";
+    tActionRow.top = "16px";
+    tStack.addControl(tActionRow);
+    function makeMiniAction(txt, bg, color) {
+      const btn = new Rectangle();
+      btn.width = "72px";
+      btn.height = "32px";
+      btn.cornerRadius = 6;
+      btn.thickness = 1;
+      btn.color = color;
+      btn.background = bg;
+      btn.left = "2px";
+      btn.isPointerBlocker = true;
+      btn.hoverCursor = "pointer";
+      const bTxt = new TextBlock();
+      bTxt.text = txt;
+      bTxt.color = "white";
+      bTxt.fontSize = 9.5;
+      bTxt.fontStyle = "bold";
+      btn.addControl(bTxt);
+      tActionRow.addControl(btn);
+      return btn;
+    }
+    __name(makeMiniAction, "makeMiniAction");
+    const btnLeftAssemble = makeMiniAction("\u26A1 Armar", "#047857", "#34d399");
+    const btnLeftFly = makeMiniAction("\u{1F680} Volar", "#15803d", "#4ade80");
+    const btnLeftAero = makeMiniAction("\u{1F310} Vectores", "#0284c7", "#38bdf8");
+    btnLeftAssemble.onPointerClickObservable.add(() => {
+      PARTS.forEach((p) => {
+        p.group.position.copyFrom(p.assembledPos);
+        p.group.rotation.set(0, 0, 0);
+        p.isAssembled = true;
+      });
+      updateLabelsVisibility();
+      updateHUD();
+    });
+    btnLeftFly.onPointerClickObservable.add(startLiveFlight);
+    btnLeftAero.onPointerClickObservable.add(() => {
+      isAeroVisible = !isAeroVisible;
+      const isFullyAssembled = PARTS.every((p) => p.isAssembled);
+      if (aeroSystemRoot) aeroSystemRoot.setEnabled((isFullyAssembled || isFlightMode) && isAeroVisible);
+      thrustVectorMeshes.forEach((tv) => tv.label.isVisible = (isFullyAssembled || isFlightMode) && isAeroVisible);
+    });
+    frameDrawer = new Rectangle("frameDrawer");
+    frameDrawer.width = "255px";
+    frameDrawer.height = "420px";
+    frameDrawer.cornerRadius = 10;
+    frameDrawer.thickness = 1.5;
+    frameDrawer.color = "#00e5ff";
+    frameDrawer.background = "rgba(6, 12, 28, 0.94)";
+    frameDrawer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    frameDrawer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+    frameDrawer.left = "-20px";
+    frameDrawer.isPointerBlocker = true;
+    ui.addControl(frameDrawer);
+    const fStack = new StackPanel();
+    fStack.width = "230px";
+    fStack.top = "10px";
+    fStack.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    frameDrawer.addControl(fStack);
+    const fTitle = new TextBlock();
+    fTitle.text = "SELECCI\xD3N DE CHASIS (FRAME)";
+    fTitle.color = "#00e5ff";
+    fTitle.fontSize = 11;
+    fTitle.fontStyle = "bold";
+    fTitle.height = "22px";
+    fTitle.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    fStack.addControl(fTitle);
+    const frameModels = [
+      { id: "drl_racer", title: "DRL Racer4", desc: "FPV Competici\xF3n \u2022 220mm \u2022 748g", thrust: "7566 g", speed: "123 kph", weight: "1286 g" },
+      { id: "zd550", title: "ZD550 Quad", desc: "Rescate Forestal \u2022 550mm \u2022 1480g", thrust: "5000 g", speed: "78 kph", weight: "1680 g" },
+      { id: "tarot680", title: "Tarot 680 Pro", desc: "Hexa Carga Pesada \u2022 680mm \u2022 2450g", thrust: "7500 g", speed: "65 kph", weight: "2450 g" },
+      { id: "f450", title: "F450 Scout", desc: "Plataforma Compacta \u2022 450mm \u2022 920g", thrust: "3800 g", speed: "85 kph", weight: "980 g" }
+    ];
+    const modelCardBtns = [];
+    frameModels.forEach((m) => {
+      const card = new Rectangle("card_" + m.id);
+      card.height = "64px";
+      card.width = "225px";
+      card.cornerRadius = 6;
+      card.thickness = m.id === activePrototypeId ? 2 : 1;
+      card.color = m.id === activePrototypeId ? "#00e5ff" : "rgba(148, 163, 184, 0.3)";
+      card.background = m.id === activePrototypeId ? "rgba(0, 160, 220, 0.25)" : "rgba(15, 23, 42, 0.8)";
+      card.top = "4px";
+      card.isPointerBlocker = true;
+      card.hoverCursor = "pointer";
+      const cStack = new StackPanel();
+      cStack.left = "8px";
+      cStack.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+      cStack.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+      card.addControl(cStack);
+      const cHead = new TextBlock();
+      cHead.text = m.title;
+      cHead.color = m.id === activePrototypeId ? "#38bdf8" : "#ffffff";
+      cHead.fontSize = 11;
+      cHead.fontStyle = "bold";
+      cHead.height = "18px";
+      cHead.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+      cStack.addControl(cHead);
+      const cDesc = new TextBlock();
+      cDesc.text = m.desc;
+      cDesc.color = "#94a3b8";
+      cDesc.fontSize = 9.5;
+      cDesc.height = "16px";
+      cDesc.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+      cStack.addControl(cDesc);
+      card.onPointerClickObservable.add(() => {
+        activePrototypeId = m.id;
+        buildDroneComponents(activePrototypeId);
+        modelCardBtns.forEach((cb, cbi) => {
+          const isSelected = frameModels[cbi].id === activePrototypeId;
+          cb.thickness = isSelected ? 2 : 1;
+          cb.color = isSelected ? "#00e5ff" : "rgba(148, 163, 184, 0.3)";
+          cb.background = isSelected ? "rgba(0, 160, 220, 0.25)" : "rgba(15, 23, 42, 0.8)";
+        });
+        tTitle.text = `${m.title.toUpperCase()} \u2022 SIMULADOR`;
+        if (rowSpecs["thrust"]) rowSpecs["thrust"].text = m.thrust;
+        if (rowSpecs["weight"]) rowSpecs["weight"].text = m.weight;
+        if (rowSpecs["speed"]) rowSpecs["speed"].text = m.speed;
+      });
+      fStack.addControl(card);
+      modelCardBtns.push(card);
+    });
+    const dBadge = new Rectangle("dBadge");
+    dBadge.width = "225px";
+    dBadge.height = "42px";
+    dBadge.cornerRadius = 6;
+    dBadge.thickness = 1;
+    dBadge.color = "rgba(0, 229, 255, 0.3)";
+    dBadge.background = "rgba(10, 20, 38, 0.85)";
+    dBadge.top = "10px";
+    const txtDBadge = new TextBlock();
+    txtDBadge.text = "DRL RACER 4 \u2022 SIZE: 220mm\n*Advanced Unsteady Drag Physics";
+    txtDBadge.color = "#38bdf8";
+    txtDBadge.fontSize = 9.5;
+    txtDBadge.fontStyle = "bold";
+    dBadge.addControl(txtDBadge);
+    fStack.addControl(dBadge);
+    bottomBar = new Rectangle("bottomBar");
+    bottomBar.width = "820px";
+    bottomBar.height = "52px";
+    bottomBar.cornerRadius = 8;
     bottomBar.thickness = 1;
     bottomBar.color = "rgba(0, 229, 255, 0.4)";
     bottomBar.background = "rgba(4, 10, 24, 0.94)";
@@ -379388,7 +380440,7 @@ var DronComponent = class {
     bottomBar.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
     bottomBar.top = "-14px";
     ui.addControl(bottomBar);
-    function makeBtn(txt, bg, leftPx, w = "125px") {
+    function makeBtn(txt, bg, leftPx, w = "115px") {
       const btn = new Rectangle();
       btn.width = w;
       btn.height = "34px";
@@ -379399,64 +380451,171 @@ var DronComponent = class {
       btn.left = leftPx;
       btn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
       btn.isPointerBlocker = true;
+      btn.hoverCursor = "pointer";
       const t = new TextBlock();
       t.text = txt;
       t.color = "white";
       t.fontSize = 10;
       t.fontStyle = "bold";
+      t.isHitTestVisible = false;
       btn.addControl(t);
-      bottomBar.addControl(btn);
-      return btn;
+      if (bottomBar) bottomBar.addControl(btn);
+      return { rect: btn, text: t };
     }
     __name(makeBtn, "makeBtn");
-    const btnNextAuto = makeBtn("Armar Siguiente \u25B6", "#0c4426", "-240px", "125px");
-    const btnDiag = makeBtn("\u{1F9EA} Test de Vuelo", "#78350f", "-110px", "120px");
-    const btnIsolate = makeBtn("\u{1F50D} Estudio de Pieza", "#1e3a8a", "20px", "125px");
-    const btnChangeProto = makeBtn("\u{1F504} Cambiar Prototipo", "#312e81", "150px", "125px");
-    const btnReset = makeBtn("\u21A9 Vaciar Mesa", "#4a1215", "265px", "95px");
-    btnNextAuto.onPointerClickObservable.add(() => {
+    const btnNextAuto = makeBtn("Paso a Paso \u25B6", "#065f46", "-330px", "115px");
+    const btnAssembleAll = makeBtn("\u26A1 Armar 100%", "#047857", "-210px", "115px");
+    const btnFlight = makeBtn("\u{1F680} Probar Vuelo", "#15803d", "-90px", "115px");
+    const btnDiag = makeBtn("\u{1F9EA} Diagn\xF3stico", "#b45309", "30px", "115px");
+    const btnIsolate = makeBtn("\u{1F50D} Estudio Pieza", "#1d4ed8", "150px", "115px");
+    const btnReset = makeBtn("\u21A9 Vaciar Banco", "#991b1b", "270px", "115px");
+    btnNextAuto.rect.onPointerClickObservable.add(() => {
       const nextPart = PARTS.find((p) => !p.isAssembled);
       if (nextPart) {
         animateHandAssemble(nextPart, updateHUD);
       }
     });
-    btnDiag.onPointerClickObservable.add(runFlightDiagnostic);
-    btnIsolate.onPointerClickObservable.add(() => {
+    btnAssembleAll.rect.onPointerClickObservable.add(() => {
+      PARTS.forEach((p) => {
+        p.group.position.copyFrom(p.assembledPos);
+        p.group.rotation.set(0, 0, 0);
+        p.isAssembled = true;
+      });
+      updateLabelsVisibility();
+      updateHUD();
+    });
+    btnDiag.rect.onPointerClickObservable.add(runFlightDiagnostic);
+    btnFlight.rect.onPointerClickObservable.add(startLiveFlight);
+    btnIsolate.rect.onPointerClickObservable.add(() => {
       const target = PARTS.find((p) => !p.isAssembled) || PARTS[0];
       openPartInspectionScreen(target);
     });
-    btnChangeProto.onPointerClickObservable.add(() => {
-      if (activePrototypeId === "zd550") {
-        activePrototypeId = "tarot680";
-        hudTitle.text = "PROTOTIPO ACTIVO: TAROT 680 PRO HEXA (6 MOTORES)";
-      } else {
-        activePrototypeId = "zd550";
-        hudTitle.text = "PROTOTIPO ACTIVO: ZD550 QUAD FORESTAL (4 MOTORES)";
-      }
-      buildDroneComponents(activePrototypeId);
-    });
-    btnReset.onPointerClickObservable.add(resetWorkbench);
+    btnReset.rect.onPointerClickObservable.add(resetWorkbench);
     function updateHUD() {
       const assembledCount = PARTS.filter((p) => p.isAssembled).length;
-      const pct = Math.round(assembledCount / PARTS.length * 100);
-      if (assembledCount === 0) {
-        hudTitle.text = `TALLER EN BANCO \u2022 ${activePrototypeId.toUpperCase()} (0%)`;
-        hudPieceName.text = "\u{1F449} Toca cualquier pieza o letrero para abrir su apartado t\xE9cnico 3D dedicado.";
-        hudPieceDesc.text = "Giro 360\xB0, especificaciones reales, compatibilidad y detecci\xF3n de fallos por pieza.";
-      } else if (assembledCount < PARTS.length) {
-        const nextPart = PARTS.find((p) => !p.isAssembled);
-        hudTitle.text = `ENSAMBLAJE: ${assembledCount} / ${PARTS.length} PIEZAS MONTADAS (${pct}%)`;
-        hudPieceName.text = "\u{1F449} Toca una pieza para examinarla en 3D o presiona 'Armar Siguiente \u25B6'.";
-        hudPieceDesc.text = "Siguiente pieza recomendada: " + nextPart.shortTag;
-      } else {
-        hudTitle.text = `\xA1${activePrototypeId.toUpperCase()} 100% ENSAMBLADO!`;
-        hudPieceName.text = "\u2713 Prototipo completo. Haz clic en '\u{1F9EA} Test de Vuelo' para diagnosticar.";
-        hudPieceDesc.text = "El motor f\xEDsico calcular\xE1 peso, empuje, TWR y viabilidad para la vida real.";
+      const isFullyAssembled = assembledCount === PARTS.length;
+      if (aeroSystemRoot) {
+        aeroSystemRoot.setEnabled((isFullyAssembled || isFlightMode) && isAeroVisible);
       }
+      thrustVectorMeshes.forEach((tv) => {
+        tv.label.isVisible = (isFullyAssembled || isFlightMode) && isAeroVisible;
+      });
     }
     __name(updateHUD, "updateHUD");
+    scene.onKeyboardObservable.add((kbInfo) => {
+      const key = kbInfo.event.key.toLowerCase();
+      const code = kbInfo.event.code ? kbInfo.event.code.toLowerCase() : "";
+      if (kbInfo.type === KeyboardEventTypes.KEYDOWN) {
+        keyState[key] = true;
+        if (code) keyState[code] = true;
+        if (key === "escape" || key === "esc" || key === "backspace") {
+          if (isIsolatedInspection) {
+            closePartShowroom();
+          } else if (isFlightMode) {
+            landDrone();
+          }
+        }
+      } else if (kbInfo.type === KeyboardEventTypes.KEYUP) {
+        keyState[key] = false;
+        if (code) keyState[code] = false;
+      }
+    });
+    scene.onBeforeRenderObservable.add(() => {
+      const now = performance.now();
+      const dt = scene.getEngine().getDeltaTime() / 1e3;
+      const cycle = now % 1200 / 1200;
+      const isFlash = cycle > 0 && cycle < 0.04 || cycle > 0.12 && cycle < 0.16;
+      if (ledStrobeWhiteMat) {
+        const intens = isFlash ? 3 : 0.08;
+        ledStrobeWhiteMat.emissiveColor.set(intens, intens, intens);
+      }
+      const pulse = 0.8 + 0.2 * Math.sin(now * 6e-3);
+      if (ledGreenMat) ledGreenMat.emissiveColor.set(0, pulse * 1.2, 0.25 * pulse);
+      if (ledRedMat) ledRedMat.emissiveColor.set(pulse * 1.2, 0.05 * pulse, 0.1 * pulse);
+      if (isAeroVisible && downwashVortices.length > 0) {
+        downwashVortices.forEach((vl) => {
+          vl.rotation.y += isFlightMode ? 0.08 : 0.02;
+        });
+      }
+      if (isFlightMode) {
+        const elapsedFlightSec = Math.floor((now - flightStartTime) / 1e3);
+        const targetSpin = isLanding ? 0 : 0.65;
+        propSpinSpeed = Scalar.Lerp(propSpinSpeed, targetSpin, dt * 3.5);
+        propNodes.forEach((pn, idx) => {
+          const dir = idx % 2 === 0 ? 1 : -1;
+          pn.rotation.y += propSpinSpeed * dir;
+        });
+        if (isLanding) {
+          const restY = activePrototypeId === "drl_racer" ? 0.045 : activePrototypeId === "tarot680" ? 0.235 : 0.225;
+          droneRoot.position.x = Scalar.Lerp(droneRoot.position.x, 0, dt * 2.2);
+          droneRoot.position.z = Scalar.Lerp(droneRoot.position.z, 0.02, dt * 2.2);
+          droneRoot.position.y = Scalar.Lerp(droneRoot.position.y, restY, dt * 1.8);
+          droneRoot.rotation.x = Scalar.Lerp(droneRoot.rotation.x, 0, dt * 3);
+          droneRoot.rotation.z = Scalar.Lerp(droneRoot.rotation.z, 0, dt * 3);
+          droneRoot.rotation.y = Scalar.Lerp(droneRoot.rotation.y, 0, dt * 2);
+          if (Math.abs(droneRoot.position.y - restY) < 0.025 && propSpinSpeed < 0.05) {
+            droneRoot.position.set(0, restY, 0.02);
+            droneRoot.rotation.set(0, 0, 0);
+            isFlightMode = false;
+            isLanding = false;
+            propSpinSpeed = 0;
+            flightHud.isVisible = false;
+            setWorkshopUIVisibility(true);
+            updateLabelsVisibility();
+            camera.setTarget(new Vector3(0, 0.12, 0.02));
+            camera.radius = 1.25;
+          }
+          return;
+        }
+        let throttleInput = 0;
+        if (keyState[" "] || keyState["space"]) throttleInput += 1;
+        if (keyState["c"] || keyState["shift"] || keyState["shiftleft"]) throttleInput -= 1;
+        flightTargetY += throttleInput * 0.45 * dt;
+        flightTargetY = Scalar.Clamp(flightTargetY, 0.35, 2.2);
+        let pitchInput = 0;
+        if (keyState["w"] || keyState["arrowup"]) pitchInput += 1;
+        if (keyState["s"] || keyState["arrowdown"]) pitchInput -= 1;
+        let rollInput = 0;
+        if (keyState["d"] || keyState["arrowright"]) rollInput += 1;
+        if (keyState["a"] || keyState["arrowleft"]) rollInput -= 1;
+        let yawInput = 0;
+        if (keyState["e"]) yawInput += 1;
+        if (keyState["q"]) yawInput -= 1;
+        const targetPitch = pitchInput * -0.16;
+        const targetRoll = rollInput * 0.18;
+        droneRoot.rotation.x = Scalar.Lerp(droneRoot.rotation.x, targetPitch, dt * 5);
+        droneRoot.rotation.z = Scalar.Lerp(droneRoot.rotation.z, targetRoll, dt * 5);
+        droneRoot.rotation.y += yawInput * 1.5 * dt;
+        const forward = droneRoot.forward.scale(pitchInput * 0.55 * dt);
+        const right = droneRoot.right.scale(rollInput * 0.55 * dt);
+        droneRoot.position.addInPlace(forward);
+        droneRoot.position.addInPlace(right);
+        droneRoot.position.x = Scalar.Clamp(droneRoot.position.x, -1.8, 1.8);
+        droneRoot.position.z = Scalar.Clamp(droneRoot.position.z, -1.8, 1.8);
+        const turb = Math.sin(now * 35e-4) * 0.012 + Math.cos(now * 22e-4) * 6e-3;
+        droneRoot.position.y = Scalar.Lerp(droneRoot.position.y, flightTargetY + turb, dt * 3.5);
+        camera.setTarget(Vector3.Lerp(camera.target, droneRoot.position, dt * 4));
+        const isHexa = activePrototypeId === "tarot680";
+        const agl = Math.max(0, droneRoot.position.y - 0.16);
+        const baseThrust = isHexa ? 48 : 44.8;
+        const dynThrust = baseThrust + throttleInput * 8 + (pitchInput !== 0 || rollInput !== 0 ? 3.5 : 0);
+        const dynRPM = Math.round(6200 + throttleInput * 1100 + Math.sin(now * 0.01) * 60);
+        const battVolts = Math.max(10.5, 12.4 - elapsedFlightSec * 0.02 - (throttleInput > 0 ? 0.35 : 0));
+        const dynAmps = Math.round(22 + throttleInput * 12 + (isHexa ? 6 : 0));
+        txtFlightAgl.text = `ALTITUD AGL: ${agl.toFixed(2)} m`;
+        txtFlightThrust.text = `EMPUJE: ${dynThrust.toFixed(1)} N (${dynRPM} RPM)`;
+        txtFlightBattery.text = `BATER\xCDA: ${battVolts.toFixed(1)}V \u2022 ${dynAmps}A`;
+        txtFlightAttitude.text = `P: ${(droneRoot.rotation.x * 57.3).toFixed(1)}\xB0 | R: ${(droneRoot.rotation.z * 57.3).toFixed(1)}\xB0 | Y: ${(droneRoot.rotation.y * 57.3).toFixed(1)}\xB0`;
+        thrustVectorMeshes.forEach((tv) => {
+          const scaleY = 1 + throttleInput * 0.35;
+          tv.shaft.scaling.y = scaleY;
+          tv.shaft.position.y = tv.baseHeight * scaleY / 2;
+          tv.tip.position.y = tv.baseHeight * scaleY + 0.015;
+        });
+      }
+    });
     scene.onPointerDown = function(evt, pick) {
-      if (isIsolatedInspection) return;
+      if (isIsolatedInspection || isFlightMode) return;
       if (evt.button === 0 && pick.hit && pick.pickedMesh) {
         const m = pick.pickedMesh;
         for (let i = 0; i < PARTS.length; i++) {
@@ -379469,18 +380628,24 @@ var DronComponent = class {
       }
     };
     scene.onPointerMove = function(evt, pick) {
-      if (isIsolatedInspection) return;
+      if (isIsolatedInspection || isFlightMode) return;
       if (pick.hit && pick.pickedMesh) {
         const m = pick.pickedMesh;
+        let found = false;
         for (let i = 0; i < PARTS.length; i++) {
           const part = PARTS[i];
           if (part.group === m || part.group.getChildren().includes(m) || m.isDescendantOf(part.group)) {
-            showInspectionCard(part);
+            hl.removeAllMeshes();
+            part.group.getChildMeshes().forEach((cm) => hl.addMesh(cm, Color3.FromHexString("#00e5ff")));
+            found = true;
             break;
           }
         }
+        if (!found && hl) hl.removeAllMeshes();
+      } else if (hl) {
+        hl.removeAllMeshes();
       }
     };
-    buildDroneComponents("zd550");
+    buildDroneComponents(activePrototypeId);
   }
 };
