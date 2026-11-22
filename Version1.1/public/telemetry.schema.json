@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DroneTelemetryAndEventSchema",
+  "description": "Esquema formal JSON Schema para la validación de telemetría de vuelo 6-DOF y eventos educativos STEAM en el proyecto Midron ZD550.",
+  "type": "object",
+  "definitions": {
+    "TelemetryPacket": {
+      "type": "object",
+      "required": [
+        "armed",
+        "flightMode",
+        "altitude",
+        "speedKmh",
+        "verticalSpeed",
+        "rollDeg",
+        "pitchDeg",
+        "yawDeg",
+        "voltage",
+        "current",
+        "soc",
+        "ambientTemp",
+        "thermalUpdraft",
+        "thrustN",
+        "health"
+      ],
+      "properties": {
+        "armed": { "type": "boolean" },
+        "flightMode": { "type": "string", "enum": ["MANUAL", "ALT_HOLD", "LOITER", "WAYPOINT", "RTL"] },
+        "health": { "type": "number", "minimum": 0, "maximum": 100 },
+        "altitude": { "type": "number", "minimum": 0 },
+        "speedKmh": { "type": "number", "minimum": 0 },
+        "verticalSpeed": { "type": "number" },
+        "rollDeg": { "type": "number", "minimum": -180, "maximum": 180 },
+        "pitchDeg": { "type": "number", "minimum": -180, "maximum": 180 },
+        "yawDeg": { "type": "number", "minimum": 0, "maximum": 360 },
+        "voltage": { "type": "number", "minimum": 0, "maximum": 15 },
+        "current": { "type": "number", "minimum": 0, "maximum": 200 },
+        "soc": { "type": "number", "minimum": 0, "maximum": 100 },
+        "batteryTemp": { "type": "number" },
+        "retardant": { "type": "number", "minimum": 0, "maximum": 100 },
+        "ambientTemp": { "type": "number" },
+        "thermalUpdraft": { "type": "number" },
+        "effectiveB": { "type": "number", "minimum": 0 },
+        "rotorRpm": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "thrustN": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0 },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "position": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "z": { "type": "number" }
+          }
+        }
+      }
+    },
+    "SteamEvent": {
+      "type": "object",
+      "required": ["event_type", "proyecto_id", "student_id", "timestamp", "phase", "payload"],
+      "properties": {
+        "event_type": {
+          "type": "string",
+          "enum": ["matematicas_intento", "ciencia_intento", "objeto_colocado", "programa_ejecutado"]
+        },
+        "proyecto_id": { "type": "string", "const": "dron-simulador-zd550-forestal" },
+        "student_id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "phase": { "type": "string", "enum": ["M", "S", "E", "T", "A"] },
+        "payload": { "type": "object" }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/definitions/TelemetryPacket" },
+    { "$ref": "#/definitions/SteamEvent" }
+  ]
+}

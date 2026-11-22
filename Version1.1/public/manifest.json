@@ -1,0 +1,92 @@
+{
+  "slug": "dron-simulador-zd550-forestal",
+  "name": "Simulador de Vuelo y Taller de Ensamblaje 3D de Dron Cuadricóptero Forestal ZD550",
+  "short_name": "DronForestal3D",
+  "version": "1.2.0",
+  "corte": 1,
+  "semana": 1,
+  "subject": "Análisis y Diseño de Software",
+  "offline_ready": true,
+  "cover_image": "assets/cover.png",
+  "engine": "Babylon.js 9.33.0",
+  "architecture": {
+    "frontend": "Vanilla JavaScript ES Modules, HTML5 Canvas, CSS3",
+    "rendering": "Babylon.js WebGL 2.0 PBR Engine con Shaders Volumétricos",
+    "physics_model": "6-DOF Newton-Euler rigid body with Thevenin battery ECM, motor dynamics and cascade PID autonomous flight controller",
+    "environmental_effects": "NASA Ames VAERA thermal updraft, air density lapse rate, tree collisions and dynamic fire propagation",
+    "backend": "Node.js Native HTTP Server con API REST para Modo Profesor y Eventos Educativos (No external frameworks)"
+  },
+  "drone_specifications": {
+    "frame": "ZD550 Quadcopter Carbon Fiber 3K Twill 2x2 (550 mm diagonal wheelbase)",
+    "motors": "4x Sunnysky/Gartt 5010 750KV Brushless Outrunner (Kt = 0.0127 N·m/A, Rm = 0.088 Ω)",
+    "propellers": "4x 12x4.5 High Efficiency Carbon Fiber (2 CW Naranja, 2 CCW Azul)",
+    "esc": "4x 40A Electronic Speed Controller (BLHeli_S / DShot600, saturación 40A)",
+    "flight_controller": "Pixhawk 2.4.8 (STM32F427 + MPU6000 IMU, ArduCopter firmware con EKF3)",
+    "telemetry": "3DR / Holybro 915 MHz Ground-Air Link (MSP & MAVLink v2 protocol)",
+    "battery": "LiPo 3S 11.1V 5000 mAh 35C (Modelo Thevenin ECM con tabla OCV y resistencia dinámica por temperatura)",
+    "payload": "Tanque presurizado de 1.2 L con retardante de polifosfato de amonio y boquillas TeeJet XR11002 (abanico 110°)",
+    "rescue_canopy": "Carenado envolvente termoformado Lexan EXL en Naranja/Rojo Internacional (#FF3D00) con domo óptico FLIR (Cx = 0.12)"
+  },
+  "steam_phases_mapping": {
+    "M": {
+      "name": "Matemáticas",
+      "competency": "Dinámica 6-DOF Newton-Euler, empuje b·ω², par reactivo d·ω², momentos de inercia y TWR > 2.0",
+      "evaluable_criteria": ["TWR >= 2.0", "Inercias Ixx, Iyy, Izz verificadas", "Conversión Newtons de corriente ascendente"],
+      "contract_file": "lecciones.json#module_1"
+    },
+    "S": {
+      "name": "Ciencias",
+      "competency": "Termodinámica de incendios forestales, rarefacción del aire por temperatura y electroquímica Thevenin LiPo",
+      "evaluable_criteria": ["Cálculo de densidad del aire rho(T)", "Curva OCV vs SoC", "Resistencia interna dinámica"],
+      "contract_file": "lecciones.json#module_3"
+    },
+    "E": {
+      "name": "Ingeniería",
+      "competency": "Ensamblaje estructural 3D de 9 subsistemas con tolerancias físicas y acoplamiento eléctrico",
+      "evaluable_criteria": ["9 piezas montadas secuencialmente", "Sentido de giro antiparalelo CW/CCW", "Cableado de potencia y aviónica"],
+      "contract_file": "lecciones.json#module_2"
+    },
+    "T": {
+      "name": "Tecnología",
+      "competency": "Algoritmos de control PID en cascada, navegación autónoma por waypoints, modo Loiter, RTL y telemetría",
+      "evaluable_criteria": ["Operación de modos autónomos", "Monitoreo de osciloscopio en tiempo real", "Misión de extinción completada"],
+      "contract_file": "lecciones.json#module_4"
+    },
+    "A": {
+      "name": "Arte y Diseño",
+      "competency": "Diseño industrial aeroespacial, carenado aerodinámico de rescate con materiales PBR y ergonomía visual de emergencia",
+      "evaluable_criteria": ["Carcasa PBR Naranja Rescate instalada", "Reducción de coeficiente de arrastre Cx = 0.12", "Inspección de domo térmico FLIR"],
+      "contract_file": "lecciones.json#module_6"
+    }
+  },
+  "evaluable_objectives": [
+    { "id": "OBJ-01", "phase": "M", "title": "Cálculo y Validación de TWR > 2.0:1" },
+    { "id": "OBJ-02", "phase": "M", "title": "Distribución de Momentos de Inercia Ixx, Iyy e Izz" },
+    { "id": "OBJ-03", "phase": "S", "title": "Evaluación de Rarefacción Térmica del Aire" },
+    { "id": "OBJ-04", "phase": "S", "title": "Simulación Electroquímica de Batería LiPo Thevenin" },
+    { "id": "OBJ-05", "phase": "E", "title": "Ensamblaje Secuencial de los 9 Subsistemas Mecatrónicos" },
+    { "id": "OBJ-06", "phase": "E", "title": "Configuración Antiparalela de Rotores y Hélices" },
+    { "id": "OBJ-07", "phase": "T", "title": "Operación de Lazos de Control PID y Modos de Vuelo" },
+    { "id": "OBJ-08", "phase": "T", "title": "Ejecución de Misión Forestal y Protocolo RTL" },
+    { "id": "OBJ-09", "phase": "A", "title": "Integración de Carcasa Aerodinámica de Rescate PBR" },
+    { "id": "OBJ-10", "phase": "A", "title": "Análisis de Reducción de Arrastre Cx y Ergonomía Visual" }
+  ],
+  "pedagogical_modules": [
+    {
+      "id": "assembly_from_zero",
+      "title": "Taller de Ensamblaje Paso a Paso e Inspección 3D",
+      "steps": 9,
+      "description": "El estudiante ensambla desde cero el chasis, electrónica, motores, controladora, tanque y carcasa con verificación de conexiones."
+    },
+    {
+      "id": "physics_mechanics",
+      "title": "Mecánica de Vuelo, Aerodinámica y Dinámica 6-DOF",
+      "description": "Visualización y control de empuje rotor (T=b·ω²), par reactivo (τ=d·ω²), momentos de cabeceo/alabeo/guiñada y vectores de sustentación."
+    },
+    {
+      "id": "wildfire_mission",
+      "title": "Misión Forestal: Vuelo Autónomo, Focos de Incendio y Retorno a Casa",
+      "description": "Simulación de vuelo sobre conatos de incendio forestal con corrientes térmicas ascendentes, aspersión de retardante químico, colisiones con árboles y RTL."
+    }
+  ]
+}

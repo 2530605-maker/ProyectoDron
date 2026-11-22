@@ -1,0 +1,68 @@
+{
+  "project_id": "dron-simulador-zd550-forestal",
+  "version": "1.0.0",
+  "title": "Rúbrica Analítica de Evaluación STEAM por Niveles de Desempeño",
+  "levels": [
+    { "id": "insuficiente", "name": "Insuficiente", "range": [0, 59], "color": "#ef4444" },
+    { "id": "basico", "name": "Básico", "range": [60, 79], "color": "#f59e0b" },
+    { "id": "competente", "name": "Competente", "range": [80, 89], "color": "#10b981" },
+    { "id": "sobresaliente", "name": "Sobresaliente", "range": [90, 100], "color": "#3b82f6" }
+  ],
+  "rubric_items": [
+    {
+      "phase": "M",
+      "competency": "Cálculo Dinámico 6-DOF y Aeronavegabilidad (TWR)",
+      "weight_pct": 20,
+      "descriptors": {
+        "insuficiente": "No identifica la relación entre la masa del dron y el empuje de los motores; no calcula el TWR ni justifica los momentos de inercia.",
+        "basico": "Calcula el TWR empírico pero confunde los ejes de inercia Iyy e Izz; no considera la conversión dimensional del arrastre térmico.",
+        "competente": "Calcula con precisión el TWR > 2.0:1, asocia correctamente los ejes de inercia (Iyy vertical y Izz longitudinal) y valida la sustentación estacionaria.",
+        "sobresaliente": "Deduce matemáticamente el modelo completo Newton-Euler 6-DOF, fundamenta la conversión de velocidad térmica a fuerza en Newtons y calcula el centro de masa dinámico con carga variable."
+      }
+    },
+    {
+      "phase": "S",
+      "competency": "Termodinámica de Incendios y Modelo Electroquímico LiPo",
+      "weight_pct": 20,
+      "descriptors": {
+        "insuficiente": "Ignora el impacto del calor sobre la sustentación del dron; utiliza un modelo de batería lineal sin resistencia interna.",
+        "basico": "Reconoce que el calor reduce la densidad del aire pero no cuantifica la pérdida de sustentación; identifica el voltaje LiPo sin polarización.",
+        "competente": "Analiza la caída de sustentación mediante effectiveB ajustado por temperatura y aplica el modelo Thevenin con tabla OCV no lineal y resistencia interna.",
+        "sobresaliente": "Modela con exactitud la curva Thevenin de 1er orden con dinámica RC y compensación térmica Arrhenius; interpreta el mapa térmico FLIR Ironbow identificando puntos calientes críticos."
+      }
+    },
+    {
+      "phase": "E",
+      "competency": "Ensamblaje Estructural 3D y Reglas de Acoplamiento",
+      "weight_pct": 25,
+      "descriptors": {
+        "insuficiente": "No completa el ensamblaje de los componentes o monta piezas de forma inconsistente sin respetar la polaridad o sentido de giro.",
+        "basico": "Ensambla los componentes mecánicos pero omite la orientación antiparalela de hélices CW/CCW o comete errores en la disposición de la aviónica.",
+        "competente": "Ensambla con éxito los 9 subsistemas respetando el orden lógico y la rotación antiparalela horaria/antihoraria para cancelación de par.",
+        "sobresaliente": "Completa el ensamblaje interactivo en tiempo récord (<3 min), demuestra dominio de las tolerancias mecánicas y justifica la elevación del mástil GPS y dampers de silicona."
+      }
+    },
+    {
+      "phase": "T",
+      "competency": "Operación de Sistemas Autónomos, PID y Misión Forestal",
+      "weight_pct": 20,
+      "descriptors": {
+        "insuficiente": "El dron sufre colisiones destructivas en el despegue; no comprende el uso de los modos de vuelo ni la telemetría.",
+        "basico": "Logra mantener el vuelo manual pero no utiliza los modos autónomos Loiter o RTL; extingue parcialmente un foco de incendio con daño severo.",
+        "competente": "Opera con destreza los lazos PID en modos Alt_Hold y Loiter; extingue al menos 2 focos y aterriza en el helipad con daño estructural moderado.",
+        "sobresaliente": "Cumple la misión al 100% extinguiendo los 3 focos forestales, activa con éxito el protocolo RTL autónomo con retorno milimétrico al Helipad, cero colisiones y registro impecable en bitácora."
+      }
+    },
+    {
+      "phase": "A",
+      "competency": "Diseño Industrial Aeroespacial y Acabados PBR",
+      "weight_pct": 15,
+      "descriptors": {
+        "insuficiente": "No monta la carcasa aerodinámica ni reconoce la importancia de la estética y ergonomía en vehículos de rescate.",
+        "basico": "Aplica la carcasa pero no comprende el impacto de la reducción del coeficiente de arrastre (Cx) ni la ergonomía visual de los colores de emergencia.",
+        "competente": "Instala la carcasa de rescate con materiales PBR fotorrealistas en Naranja Internacional, justificando la protección contra pavesas y el domo óptico FLIR.",
+        "sobresaliente": "Evalúa integralmente la aerodinámica del carenado con reducción del 34% en arrastre parásito, personaliza los acabados reflectantes PBR de alta visibilidad y valida la ergonomía del HUD."
+      }
+    }
+  ]
+}

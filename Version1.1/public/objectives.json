@@ -1,0 +1,68 @@
+{
+  "project_id": "dron-simulador-zd550-forestal",
+  "version": "1.0.0",
+  "title": "Objetivos Pedagógicos y Evaluables de Ingeniería STEAM",
+  "subject": "Análisis y Diseño de Software / Robótica y Aeronáutica",
+  "competencies": [
+    {
+      "code": "COMP-M1",
+      "phase": "M",
+      "title": "Modelado Matemático y Cinemática 6-DOF",
+      "bloom_level": "Aplicación / Análisis",
+      "description": "Comprender y calcular la relación entre empuje, par de arrastre, masa y aceleración en un cuerpo rígido no lineal con seis grados de libertad.",
+      "criteria": [
+        "Calcula correctamente la relación empuje/peso (TWR) para determinar la aeronavegabilidad (TWR > 2.0).",
+        "Distingue la contribución de los momentos de inercia principales Ixx, Iyy e Izz.",
+        "Comprende la conversión dimensional rigurosa de corrientes térmicas a fuerzas aerodinámicas (Newtons)."
+      ]
+    },
+    {
+      "code": "COMP-S1",
+      "phase": "S",
+      "title": "Termodinámica Atmosférica y Electroquímica LiPo",
+      "bloom_level": "Comprensión / Evaluación",
+      "description": "Evaluar el impacto de la temperatura extrema sobre la densidad del aire y la curva de descarga electroquímica Thevenin de baterías LiPo.",
+      "criteria": [
+        "Analiza la pérdida de sustentación (effectiveB) por rarefacción térmica en incendios forestales.",
+        "Modela la caída de tensión por resistencia interna y polarización RC en celdas LiPo.",
+        "Interpreta lecturas termográficas del mapa de calor infrarrojo (FLIR Ironbow)."
+      ]
+    },
+    {
+      "code": "COMP-E1",
+      "phase": "E",
+      "title": "Ingeniería de Ensamblaje y Tolerancias Físicas",
+      "bloom_level": "Creación / Aplicación",
+      "description": "Ensamblar paso a paso los 9 subsistemas mecánicos, eléctricos y de aviónica del cuadricóptero respetando reglas de integración.",
+      "criteria": [
+        "Ubica secuencialmente el chasis, brazos de carbono, motores, ESCs y controladora Pixhawk.",
+        "Verifica la orientación antiparalela obligatoria de hélices horarias (CW) y antihorarias (CCW).",
+        "Valida la compatibilidad eléctrica y dimensional de los componentes en el banco de trabajo 3D."
+      ]
+    },
+    {
+      "code": "COMP-T1",
+      "phase": "T",
+      "title": "Control Autónomo, Navegación GNSS y Telemetría",
+      "bloom_level": "Aplicación / Análisis",
+      "description": "Operar algoritmos de control PID multilazo, navegación por waypoints y protocolo de seguridad de retorno a casa (RTL).",
+      "criteria": [
+        "Opera los modos de vuelo Manual, Alt_Hold, Loiter y RTL.",
+        "Monitorea el osciloscopio de telemetría en tiempo real (altitud, voltaje, corriente y temperatura).",
+        "Completa la misión de patrulla y extinción de incendios forestales con sistema de daños activo."
+      ]
+    },
+    {
+      "code": "COMP-A1",
+      "phase": "A",
+      "title": "Diseño Industrial Aeroespacial y Ergonomía Visual",
+      "bloom_level": "Diseño / Creación",
+      "description": "Integrar la carcasa aerodinámica de rescate con materiales PBR y optimización del coeficiente de arrastre frontal.",
+      "criteria": [
+        "Comprende la reducción del coeficiente de arrastre parásito frontal (Cx) mediante carenados en gota aerodinámica.",
+        "Aplica cromática de alta visibilidad internacional (Naranja Rescate) para operaciones en humo denso.",
+        "Evalúa la ergonomía de la interfaz HUD y el domo óptico FLIR."
+      ]
+    }
+  ]
+}

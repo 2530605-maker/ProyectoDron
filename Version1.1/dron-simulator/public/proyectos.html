@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo Central de Proyectos de Ingeniería STEAM • Plataforma Educativa</title>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: #111827;
+      --card-border: #1f2937;
+      --accent-cyan: #00f0ff;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: linear-gradient(180deg, #161f33 0%, #0f172a 100%);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1.5rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-icon {
+      font-size: 2.2rem;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 12px;
+      padding: 0.4rem 0.6rem;
+    }
+
+    .brand-text h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .brand-text p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-pill {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 0.45rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge-offline {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid #10b981;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    main {
+      flex: 1;
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    .hero-banner {
+      background: radial-gradient(circle at top right, rgba(0, 240, 255, 0.12), transparent 45%),
+                  linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero-banner h2 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+      color: #ffffff;
+    }
+
+    .hero-banner p {
+      color: var(--text-muted);
+      max-width: 800px;
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+
+    .steam-bar {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .steam-pill {
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      border: 1px solid;
+    }
+
+    .steam-m { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: #3b82f6; }
+    .steam-s { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: #10b981; }
+    .steam-e { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: #f59e0b; }
+    .steam-t { background: rgba(0, 240, 255, 0.15); color: #22d3ee; border-color: #00f0ff; }
+    .steam-a { background: rgba(236, 72, 153, 0.15); color: #f472b6; border-color: #ec4899; }
+
+    .catalog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .catalog-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 2rem;
+    }
+
+    .project-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .project-card:hover {
+      transform: translateY(-4px);
+      border-color: #38bdf8;
+      box-shadow: 0 12px 30px -10px rgba(0, 240, 255, 0.2);
+    }
+
+    .project-card.featured {
+      border: 1.5px solid var(--accent-cyan);
+    }
+
+    .card-banner {
+      height: 180px;
+      background: linear-gradient(135deg, #1e1b4b 0%, #0c4a6e 100%);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4.5rem;
+    }
+
+    .card-banner .badge-primary {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0, 240, 255, 0.2);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-body h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      color: #ffffff;
+    }
+
+    .card-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.85rem;
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .card-desc {
+      font-size: 0.9rem;
+      color: #d1d5db;
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+      flex: 1;
+    }
+
+    .specs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      font-size: 0.8rem;
+    }
+
+    .specs-grid div span {
+      color: var(--text-muted);
+      display: block;
+      font-size: 0.7rem;
+    }
+
+    .card-footer {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: auto;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background 0.15s ease, opacity 0.15s ease;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent-cyan);
+      color: #000000;
+    }
+    .btn-primary:hover {
+      background: #38e1ff;
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: #ffffff;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    .btn-teacher {
+      background: rgba(139, 92, 246, 0.2);
+      color: #c4b5fd;
+      border: 1px solid var(--accent-purple);
+    }
+    .btn-teacher:hover {
+      background: rgba(139, 92, 246, 0.35);
+    }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: #0b0f19;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🚁</div>
+      <div class="brand-text">
+        <h1>Plataforma Educativa Central STEAM</h1>
+        <p>Laboratorio de Ingeniería Aeronáutica & Simulación 3D</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="user-pill">
+        <span>👨‍🎓</span>
+        <span id="current-user-label">Alumno: Angel Jesús Pérez (2530605)</span>
+      </div>
+      <span class="badge-offline">100% OFFLINE DISPONIBLE</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero-banner">
+      <h2>Catálogo Maestro de Proyectos de Simulación</h2>
+      <p>
+        Acceso centralizado a los entornos de simulación interactiva 3D con validación física rigurosa, modelos de dinámica Newton-Euler, telemetría y progresión pedagógica STEAM.
+      </p>
+      <div class="steam-bar">
+        <span class="steam-pill steam-m">M • Matemáticas (6-DOF)</span>
+        <span class="steam-pill steam-s">S • Ciencias (Thevenin / Térmica)</span>
+        <span class="steam-pill steam-e">E • Ingeniería (Ensamblaje 3D)</span>
+        <span class="steam-pill steam-t">T • Tecnología (PID Autónomo)</span>
+        <span class="steam-pill steam-a">A • Arte & Diseño (Carcasa PBR)</span>
+      </div>
+    </div>
+
+    <div class="catalog-header">
+      <div class="catalog-title">
+        <span>📦</span> Proyectos Registrados en la Plataforma
+      </div>
+    </div>
+
+    <div class="projects-grid">
+      <!-- Proyecto Principal: Dron Forestal ZD550 -->
+      <div class="project-card featured">
+        <div class="card-banner" style="background: radial-gradient(circle, #ff5722 0%, #1e1b4b 100%);">
+          🚁
+          <span class="badge-primary">Proyecto Activo • v1.2</span>
+        </div>
+        <div class="card-body">
+          <h3>Simulador de Dron Forestal ZD550</h3>
+          <div class="card-meta">
+            <span>📚 Análisis y Diseño de Software</span>
+            <span>⚡ Babylon.js 9 PBR</span>
+            <span>🔬 6-DOF Real</span>
+          </div>
+          <p class="card-desc">
+            Simulador interactivo 3D de ingeniería mecatrónica y dinámica de vuelo. Incluye taller de ensamblaje en banco ESD con 9 subsistemas, modelo electroquímico Thevenin, lógicas autónomas PID (Loiter, Waypoints, RTL), carenado aerodinámico PBR de rescate y misión de extinción forestal con ráfagas y propagación térmica.
+          </p>
+          <div class="specs-grid">
+            <div>
+              <span>CHASIS</span>
+              Carbono 3K Twill 2x2
+            </div>
+            <div>
+              <span>MOTORES</span>
+              4x 5010 750KV (40A ESC)
+            </div>
+            <div>
+              <span>BATERÍA</span>
+              LiPo 3S 5000mAh ECM
+            </div>
+            <div>
+              <span>EXTINCIÓN</span>
+              Tanque 1.2L Boquilla 110°
+            </div>
+          </div>
+          <div class="card-footer">
+            <a href="/index.html" class="btn btn-primary">
+              ▶ Lanzar Simulador
+            </a>
+            <a href="/index.html?alumno=2530605" class="btn btn-teacher">
+              👨‍🏫 Modo Profesor
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proyecto Referencial: Vehículo Autónomo -->
+      <div class="project-card">
+        <div class="card-banner" style="background: radial-gradient(circle, #0284c7 0%, #0f172a 100%);">
+          🏎️
+          <span class="badge-primary" style="background: rgba(14, 165, 233, 0.2); border-color: #0ea5e9; color: #38bdf8;">Currículo U2</span>
+        </div>
+        <div class="card-body">
+          <h3>Rover Terrestre Explorador Forestal</h3>
+          <div class="card-meta">
+            <span>📚 Robótica Móvil</span>
+            <span>⚙️ Cinemática Ackermann</span>
+          </div>
+          <p class="card-desc">
+            Plataforma robótica terrestre complementaria para recolección de muestras de suelo en zonas calientes de incendios forestales con tracción 4WD y sensores LiDAR.
+          </p>
+          <div class="specs-grid">
+            <div>
+              <span>TRACCIÓN</span>
+              4WD Independiente
+            </div>
+            <div>
+              <span>ALIMENTACIÓN</span>
+              LiFePO4 24V 20Ah
+            </div>
+            <div>
+              <span>AUTONOMÍA</span>
+              45 minutos
+            </div>
+            <div>
+              <span>SENSORES</span>
+              LiDAR 2D + IMU 9-DOF
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-secondary" onclick="alert('Proyecto terrestre en fase de desarrollo para Corte 2.')">
+              ℹ Ver Ficha Técnica
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proyecto Referencial: Estación de Monitoreo -->
+      <div class="project-card">
+        <div class="card-banner" style="background: radial-gradient(circle, #10b981 0%, #0f172a 100%);">
+          📡
+          <span class="badge-primary" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #34d399;">Currículo U3</span>
+        </div>
+        <div class="card-body">
+          <h3>Estación Base Meteorológica de Telemetría</h3>
+          <div class="card-meta">
+            <span>📚 Redes y Sensores IoT</span>
+            <span>📶 Enlace 915 MHz</span>
+          </div>
+          <p class="card-desc">
+            Estación de tierra para recepción y análisis de telemetría MAVLink v2, anemometría ultrasónica y cálculo de índice de riesgo de ignición forestal.
+          </p>
+          <div class="specs-grid">
+            <div>
+              <span>RADIOENLACE</span>
+              Holybro 915 MHz 1W
+            </div>
+            <div>
+              <span>ALCANCE</span>
+              5.5 km Línea de Vista
+            </div>
+            <div>
+              <span>PROTOCOLO</span>
+              MAVLink v2 / MSP
+            </div>
+            <div>
+              <span>ALIMENTACIÓN</span>
+              Panel Solar 50W + Batería
+            </div>
+          </div>
+          <div class="card-footer">
+            <button class="btn btn-secondary" onclick="alert('Estación base en preparación.')">
+              ℹ Ver Ficha Técnica
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      Plataforma Educativa Central STEAM • Asignatura: Análisis y Diseño de Software • Corte 1<br>
+      Equipo de Desarrollo: Ángel Jesús Pérez Escobedo, Yulian Martin Silva Cruz, Jorge Luis Carrizales Aguiar, Ángel Emiliano Gómez Porras.
+    </p>
+  </footer>
+
+</body>
+</html>

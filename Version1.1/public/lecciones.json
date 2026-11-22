@@ -1,0 +1,205 @@
+{
+  "project_id": "dron-simulador-zd550-forestal",
+  "version": "1.0.0",
+  "title": "Módulos Teóricos y Evaluaciones de Ingeniería de Drones Forestales ZD550",
+  "modules": [
+    {
+      "id": 1,
+      "title": "Dinámica de Vuelo 6-DOF y Mecánica de Cuadricópteros",
+      "steam_phase": "M",
+      "summary": "Estudio del modelo Newton-Euler de cuerpo rígido con 6 grados de libertad, relación empuje-velocidad angular y cálculo de relación empuje/peso (TWR).",
+      "content": "Un cuadricóptero clase 550 se modela como un sólido rígido con seis grados de libertad (tres de traslación X, Y, Z y tres de rotación: Roll φ, Pitch θ, Yaw ψ). El empuje generado por cada rotor individual es proporcional al cuadrado de su velocidad angular: T_i = b · ω_i², donde b es el coeficiente aerodinámico de sustentación. El momento de guiñada (Yaw) se genera por la aceleración diferencial de pares de rotores antiparalelos (CW vs CCW), mediante el coeficiente de arrastre reactivo: τ_i = d · ω_i². Para que una aeronave multirotor sea gobernable y capaz de ascender ante ráfagas descendentes, la relación Empuje/Peso (TWR = T_total / (m · g)) debe ser estrictamente superior a 2.0:1.",
+      "questions": [
+        {
+          "id": "m1_q1",
+          "question": "¿Cuál es la relación matemática fundamental entre el empuje generado por un rotor y su velocidad angular?",
+          "options": [
+            "El empuje es linealmente proporcional a la velocidad angular (T = b · ω)",
+            "El empuje es inversamente proporcional a la velocidad angular (T = b / ω)",
+            "El empuje es proporcional al cuadrado de la velocidad angular (T = b · ω²)",
+            "El empuje no depende de la velocidad angular sino únicamente de la batería"
+          ],
+          "correct_index": 2,
+          "explanation": "Según la teoría del elemento de pala y la dinámica de fluidos de Kemcha (2024), el empuje estático se modela rigurosamente como T = b · ω², donde b depende de la densidad del aire, el diámetro y el paso de la hélice."
+        },
+        {
+          "id": "m1_q2",
+          "question": "¿Por qué un cuadricóptero requiere una relación Empuje/Peso (TWR) mínima de 2.0:1 para operar con seguridad?",
+          "options": [
+            "Porque con un TWR menor a 1.0 no podría levantarse del suelo, y el margen adicional del 100% permite maniobrar y contrarrestar ráfagas sin saturar los motores",
+            "Porque las regulaciones aeronáuticas exigen que vuele al doble de la velocidad del sonido",
+            "Para evitar que la batería se descargue rápidamente",
+            "Para que los cuatro motores giren siempre en sentido horario"
+          ],
+          "correct_index": 0,
+          "explanation": "Un TWR de 2.0:1 garantiza que el dron alcance el vuelo estacionario (hover) al 50% de acelerador, reservando el 50% restante de potencia para correcciones dinámicas de actitud ante viento y térmicas."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Sistemas de Propulsión Eléctrica Brushless y ESCs",
+      "steam_phase": "E",
+      "summary": "Análisis electromecánico de motores brushless outrunner 12N14P, constante de velocidad KV y conmutación digital DShot600.",
+      "content": "Los motores outrunner sin escobillas (Brushless DC) emplean un estator interno trifásico de 12 ranuras (12N) con devanados de cobre de alta pureza y una campana exterior giratoria con 14 imanes curvados de neodimio (14P). La constante KV (750 RPM/V) indica la velocidad teórica de rotación sin carga por cada voltio suministrado. Los controladores electrónicos de velocidad (ESCs) de 40A utilizan transistores MOSFET de muy baja resistencia interna RDS(on) para conmutar las tres fases a frecuencias ultrasónicas (hasta 48 kHz). El protocolo digital DShot600 transmite comandos de 16 bits sin conversión analógica, eliminando la latencia y la deriva por temperatura.",
+      "questions": [
+        {
+          "id": "m2_q1",
+          "question": "¿Qué representa exactamente la especificación de 750 KV en un motor brushless Sunnysky 5010?",
+          "options": [
+            "El motor consume 750 Kilovoltios de energía eléctrica",
+            "El motor gira a 750 revoluciones por minuto por cada voltio aplicado en vacío",
+            "El motor soporta un peso máximo de 750 kilogramos",
+            "El motor produce 750 gramos de empuje constantes"
+          ],
+          "correct_index": 1,
+          "explanation": "La constante KV (Velocity Constant) define la velocidad angular en RPM que alcanza el motor por cada voltio de tensión aplicado en sus terminales sin carga mecánica."
+        },
+        {
+          "id": "m2_q2",
+          "question": "¿Cuál es la principal ventaja técnica del protocolo digital DShot600 frente a la modulación analógica PWM tradicional?",
+          "options": [
+            "Requiere cables de alimentación mucho más gruesos",
+            "Aumenta la masa del cuadricóptero para darle estabilidad",
+            "Transmite tramas digitales con checksum CRC de 16 bits sin retardo ni necesidad de calibración de rango",
+            "Convierte la corriente alterna en corriente trifásica de alta tensión"
+          ],
+          "correct_index": 2,
+          "explanation": "DShot600 es un protocolo digital que opera a 600 kbit/s con paridad CRC, permitiendo al variador responder en microsegundos y habilitando el frenado activo (Damped Light)."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Electroquímica y Modelado Thevenin de Baterías LiPo",
+      "steam_phase": "S",
+      "summary": "Modelo de Circuito Equivalente Thevenin (ECM), resistencia interna por temperatura y curvas de descarga no lineal.",
+      "content": "Una batería LiPo (Litio-Polímero) 3S está constituida por tres celdas electroquímicas de 3.7V nominales conectadas en serie (11.1V nominal, 12.6V a plena carga y 9.6V de corte de seguridad). A diferencia de los modelos lineales simplificados, el comportamiento dinámico real sigue el modelo Thevenin ECM de primer orden: V_term = OCV(SoC) - I · R_int - V_pol. La tensión en circuito abierto (OCV) decae de manera sigmoidea no lineal respecto al Estado de Carga (SoC). La resistencia interna (0.03 a 0.06 Ω/celda) aumenta drásticamente ante variaciones térmicas extremas, provocando caídas de tensión (voltage sag) transitorias bajo aceleraciones bruscas.",
+      "questions": [
+        {
+          "id": "m3_q1",
+          "question": "En el modelo electroquímico Thevenin, ¿qué fenómeno físico representa el término V_pol (voltaje de polarización RC)?",
+          "options": [
+            "La resistencia física de los cables de cobre de silicona",
+            "El retardo transitorio de difusión iónica y polarización electroquímica en el electrolito",
+            "El voltaje máximo de la estación de carga",
+            "La aceleración de los motores durante el hover"
+          ],
+          "correct_index": 1,
+          "explanation": "El par RC en paralelo modela la dinámica transitoria de transferencia de carga y difusión en la doble capa electroquímica de las celdas LiPo."
+        },
+        {
+          "id": "m3_q2",
+          "question": "¿Por qué una elevación térmica extrema (>60°C) afecta gravemente el rendimiento de una batería LiPo en operaciones forestales?",
+          "options": [
+            "Porque la batería se congela instantáneamente",
+            "Porque incrementa la resistencia interna dinámica, degrada el electrolito y reduce el voltaje útil disponible bajo carga",
+            "Porque hace que la batería se recargue automáticamente sin control",
+            "Porque invierte la polaridad positiva y negativa del conector XT60"
+          ],
+          "correct_index": 1,
+          "explanation": "A altas temperaturas, la cinemática de descomposición electrolítica y la resistencia interna aumentan, precipitando el corte por baja tensión (LVC failsafe)."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Control en Lazo Cerrado PID y Navegación Autónoma",
+      "steam_phase": "T",
+      "summary": "Arquitectura de control PID multilazo en cascada, navegación GNSS por waypoints y protocolo de retorno a casa (RTL).",
+      "content": "Para la estabilización y navegación autónoma del ZD550, la controladora Pixhawk 2.4.8 implementa un control en cascada multietapa. El lazo externo de posición compara las coordenadas GNSS actuales con la posición objetivo y calcula la velocidad inercial deseada. El lazo intermedio de velocidad traduce dicho error en ángulos de inclinación deseados (Roll y Pitch). Finalmente, el lazo interno de actitud corre a 400 Hz regulando la aceleración angular mediante las ganancias Proporcional (Kp), Integral (Ki) y Derivativa (Kd). En caso de emergencia o pérdida de enlace, el algoritmo Return-To-Launch (RTL) asciende el dron a altitud de despeje (10m), vuela en línea recta al Helipad y desciende a 0.5 m/s hasta desarmar.",
+      "questions": [
+        {
+          "id": "m4_q1",
+          "question": "¿Cuál es la función del término derivativo (Kd) en el lazo de control de actitud de un cuadricóptero?",
+          "options": [
+            "Eliminar el error en estado estacionario a largo plazo",
+            "Amortiguar las oscilaciones y anticipar la tendencia del error basándose en su velocidad de cambio",
+            "Aumentar indefinidamente la ganancia de potencia de los motores",
+            "Calcular la posición del satélite GPS"
+          ],
+          "correct_index": 1,
+          "explanation": "La componente derivativa actúa como un freno predictivo sobre la tasa angular (velocidad de cambio del ángulo), evitando sobrepasos y oscilaciones violentas."
+        },
+        {
+          "id": "m4_q2",
+          "question": "¿Qué secuencia cinemática ejecuta el modo autónomo RTL (Return-To-Launch) para garantizar un retorno seguro?",
+          "options": [
+            "Apaga inmediatamente los motores y cae en paracaídas",
+            "Asciende a altitud de seguridad, navega horizontalmente hacia el Helipad, desciende suavemente y desarma los motores al tocar tierra",
+            "Acelera hacia el norte a máxima velocidad sin importar la altitud",
+            "Aumenta la temperatura de los motores hasta 100°C"
+          ],
+          "correct_index": 1,
+          "explanation": "El protocolo RTL de ArduCopter asciende primero para evitar colisionar con árboles o estructuras, transita en línea recta al punto de despegue y efectúa un aterrizaje controlado."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Aerodinámica Ambiental, Térmicas e Incendios Forestales",
+      "steam_phase": "S",
+      "summary": "Modelado de corrientes convectivas ascendentes NASA Ames VAERA, rarefacción del aire por temperatura y dispersión de retardante químico.",
+      "content": "En las inmediaciones de un incendio forestal, la temperatura del aire puede superar los 110°C, provocando una caída drástica en la densidad del aire según la ecuación de los gases ideales (ρ = P / (R · T)). Esta rarefacción reduce el coeficiente de empuje efectivo (effectiveB), disminuyendo la sustentación de las hélices hasta en un 25%. Simultáneamente, el calor genera columnas térmicas ascendentes (updrafts) de hasta 5 m/s. En el simulador, dicha corriente se convierte dimensionalmente a Newtons mediante el arrastre relativo: F_up = 0.5 · ρ · Cd · A · |v_rel| · v_rel. El sistema ventral descarga 1.2L de retardante de polifosfato de amonio en un abanico plano de 110°, enfriando la biomasa forestal por debajo de su punto de ignición.",
+      "questions": [
+        {
+          "id": "m5_q1",
+          "question": "¿Cómo afecta la rarefacción del aire por alta temperatura al empuje de las hélices de un cuadricóptero?",
+          "options": [
+            "Aumenta el empuje porque el aire caliente es más denso",
+            "No produce ningún efecto aerodinámico apreciable",
+            "Disminuye el empuje porque hay menor masa de aire por unidad de volumen desplazada por las palas",
+            "Hace que los motores giren en sentido inverso"
+          ],
+          "correct_index": 2,
+          "explanation": "Al aumentar la temperatura, la densidad del aire disminuye; dado que el empuje depende directamente de la densidad (T ∝ ρ · ω²), la aeronave pierde sustentación y requiere mayor régimen de RPM."
+        },
+        {
+          "id": "m5_q2",
+          "question": "¿Por qué es un error dimensional grave sumar directamente la velocidad térmica ascendente (m/s) a la aceleración lineal (m/s²)?",
+          "options": [
+            "Porque la velocidad y la aceleración tienen unidades dimensionalmente incompatibles y la velocidad del aire debe transformarse en fuerza de arrastre (N) antes de dividirse por la masa",
+            "Porque el viento en Babylon.js no tiene velocidad",
+            "Porque los motores del dron funcionan con electricidad y no con viento",
+            "Porque las matemáticas de Newton no se aplican en la atmósfera terrestre"
+          ],
+          "correct_index": 0,
+          "explanation": "La velocidad del viento no es una fuerza; el aire ascendente ejerce una fuerza de arrastre aerodinámico proporcional a la velocidad relativa al cuadrado, la cual se traduce en aceleración al dividirse entre la masa total."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Materiales Compuestos, Fibra de Carbono y Diseño de Rescate",
+      "steam_phase": "A",
+      "summary": "Microestructura del tejido de fibra de carbono 3K Twill 2x2, laca epóxica PBR y diseño aerodinámico de la carcasa de rescate.",
+      "content": "La estructura primaria del ZD550 está fabricada en fibra de carbono 3K con tejido de sarga (Twill 2x2 Weave). La designación '3K' indica que cada hilo de urdimbre y trama contiene 3,000 filamentos microscópicos de carbono de 7 micras de diámetro, entrelazados en una matriz de resina epóxica aeroespacial con resistencia a la tracción de 3,500 MPa y densidad de apenas 1.55 g/cm³. En la Fase A (Arte y Diseño), se implementa la carcasa aerodinámica envolvente de alta visibilidad en Naranja Internacional (#FF3D00). Este carenado protege la aviónica contra pavesas incandescentes y reduce el coeficiente de arrastre parásito frontal (Cx) de 0.35 a 0.12.",
+      "questions": [
+        {
+          "id": "m6_q1",
+          "question": "¿Qué significa técnicamente la nomenclatura '3K' en las placas y tubos de fibra de carbono del dron?",
+          "options": [
+            "Que el chasis soporta un peso máximo de 3,000 kilogramos",
+            "Que cada hilo de tejido compuesto contiene 3,000 microfilamentos de carbono continuo",
+            "Que la placa fue cortada con un láser de 3,000 vatios",
+            "Que el dron alcanza una velocidad máxima de 3,000 km/h"
+          ],
+          "correct_index": 1,
+          "explanation": "El número seguido de la letra K indica miles de filamentos continuos por hebra (tow) en el tejido estructural compuesto."
+        },
+        {
+          "id": "m6_q2",
+          "question": "¿Cuál es el doble propósito del carenado aerodinámico de rescate diseñado en la Fase A (Arte & Diseño)?",
+          "options": [
+            "Es puramente decorativo y no cumple ninguna función técnica",
+            "Aumentar el peso del dron para que no pueda despegar",
+            "Proveer protección mecánica e ignífuga a la aviónica con alta visibilidad visual diurna y reducir el arrastre parásito un 34%",
+            "Sustituir las cuatro hélices por un motor a reacción"
+          ],
+          "correct_index": 2,
+          "explanation": "En diseño industrial aeroespacial (Fase A), la estética y la ergonomía se integran con la aerodinámica (menor Cx) y la visibilidad cromática de rescate en entornos de humo denso."
+        }
+      ]
+    }
+  ]
+}

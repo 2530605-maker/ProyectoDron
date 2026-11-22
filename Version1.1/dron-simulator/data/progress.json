@@ -1,0 +1,50 @@
+{
+  "alumno-local-demo": {
+    "studentId": "alumno-local-demo",
+    "projectId": "dron-simulador-zd550-forestal",
+    "state": {
+      "projectId": "dron-simulador-zd550-forestal",
+      "studentId": "alumno-local-demo",
+      "currentPhase": "T",
+      "phaseData": {
+        "M": {
+          "name": "Matemáticas",
+          "title": "Dinámica 6-DOF y Cálculo de TWR",
+          "unlocked": true,
+          "completed": false,
+          "score": 0
+        },
+        "S": {
+          "name": "Ciencias",
+          "title": "Termodinámica de Fuego y Batería Thevenin",
+          "unlocked": false,
+          "completed": false,
+          "score": 0
+        },
+        "E": {
+          "name": "Ingeniería",
+          "title": "Taller de Ensamblaje Estructural 3D",
+          "unlocked": false,
+          "completed": true,
+          "score": 100
+        },
+        "T": {
+          "name": "Tecnología",
+          "title": "Sistemas Autónomos, PID y Navegación RTL",
+          "unlocked": true,
+          "completed": false,
+          "score": 0
+        },
+        "A": {
+          "name": "Arte y Diseño",
+          "title": "Carcasa Aerodinámica PBR de Rescate",
+          "unlocked": false,
+          "completed": false,
+          "score": 0
+        }
+      },
+      "isFullyCompleted": false
+    },
+    "lastUpdated": "2026-11-19T22:23:32.437Z"
+  }
+}

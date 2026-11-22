@@ -1,0 +1,25 @@
+{
+  "name": "dron-simulador-zd550-forestal",
+  "version": "1.0.0",
+  "description": "Simulador de Vuelo y Taller de Ensamblaje 3D de Dron Cuadricóptero Forestal ZD550 en Babylon.js con Dinámica 6-DOF Newton-Euler y Extinción de Incendios",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "drone",
+    "quadcopter",
+    "babylonjs",
+    "simulation",
+    "6dof",
+    "wildfire",
+    "aerospace",
+    "educational"
+  ],
+  "author": "Equipo de Análisis y Diseño de Software",
+  "license": "MIT",
+  "dependencies": {
+    "babylonjs": "^9.33.0"
+  }
+}

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Vuelo y Ensamblaje 3D - Dron Forestal ZD550 | Babylon.js</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Barra de Modo Profesor / Auditoría Académica (Activada con ?alumno=ID) -->
+  <div id="teacher-mode-bar" class="teacher-mode-bar hidden">
+    <div class="teacher-info">
+      <span class="badge-teacher">MODO PROFESOR</span>
+      <span id="teacher-student-info">Auditoría del Alumno: ID <strong>2530605</strong> (Ángel Jesús Pérez Escobedo)</span>
+    </div>
+    <div class="teacher-controls">
+      <button id="btn-teacher-view-progress" class="btn-teacher-mini">📊 Ver Progreso STEAM</button>
+      <button id="btn-teacher-view-logs" class="btn-teacher-mini">📋 Bitácoras de Vuelo</button>
+      <button id="btn-teacher-view-rubrics" class="btn-teacher-mini">📝 Rúbricas</button>
+      <a href="/proyectos.html" class="btn-teacher-mini" style="text-decoration:none;">📂 Catálogo</a>
+    </div>
+  </div>
+
+  <!-- Lienzo de Renderizado Babylon.js -->
+  <canvas id="renderCanvas"></canvas>
+
+  <!-- Barra Superior del HUD con Fases STEAM y Navegación -->
+  <header id="hud-header">
+    <div class="brand-badge">
+      <div>
+        <h1>Dron ZD550 • Forest Fire Simulator</h1>
+        <div class="sub">Laboratorio de Ingeniería STEAM • Babylon.js 9 PBR 6-DOF</div>
+      </div>
+      <span class="status-tag">100% OFFLINE</span>
+    </div>
+
+    <!-- Barra de Estados y Fases STEAM (M -> S -> E -> T -> A) -->
+    <div id="steam-nav-bar" class="steam-nav-bar">
+      <button id="btn-phase-m" class="steam-phase-btn active" data-phase="M">
+        <span class="p-letter">M</span>
+        <span class="p-name">Matemáticas</span>
+      </button>
+      <button id="btn-phase-s" class="steam-phase-btn locked" data-phase="S">
+        <span class="p-letter">S</span>
+        <span class="p-name">Ciencias</span>
+      </button>
+      <button id="btn-phase-e" class="steam-phase-btn locked" data-phase="E">
+        <span class="p-letter">E</span>
+        <span class="p-name">Ingeniería</span>
+      </button>
+      <button id="btn-phase-t" class="steam-phase-btn locked" data-phase="T">
+        <span class="p-letter">T</span>
+        <span class="p-name">Tecnología</span>
+      </button>
+      <button id="btn-phase-a" class="steam-phase-btn locked" data-phase="A">
+        <span class="p-letter">A</span>
+        <span class="p-name">Arte & Diseño</span>
+      </button>
+    </div>
+
+    <div class="mode-switcher">
+      <button id="btn-mode-assembly" class="btn-mode active">
+        <span>🔧</span> Taller Ensamblaje
+      </button>
+      <button id="btn-mode-flight" class="btn-mode">
+        <span>🚁</span> Misión Vuelo
+      </button>
+    </div>
+  </header>
+
+  <!-- Alerta / Notificación Flotante -->
+  <div id="hud-alert">ADVERTENCIA</div>
+
+  <!-- Ficha Flotante del Inspector de Materiales -->
+  <div id="material-inspector-card">
+    <div class="card-header">
+      <div class="card-title" id="inspector-title">Componente Seleccionado</div>
+      <button class="card-close" id="btn-close-inspector" title="Cerrar">✕</button>
+    </div>
+    <div class="material-badge-row">
+      <span class="material-badge" id="inspector-badge-type">COMPOSITE</span>
+      <span class="material-badge metal" id="inspector-badge-temp">180°C MAX</span>
+    </div>
+    <div class="inspector-section">
+      <div class="inspector-section-label">🔬 Material de Fabricación:</div>
+      <div class="inspector-material-name" id="inspector-material-name">Fibra de Carbono 3K</div>
+      <div class="inspector-desc" id="inspector-desc">Descripción técnica del material...</div>
+    </div>
+    <div class="inspector-properties-grid" id="inspector-props-grid">
+      <!-- Rellenado dinámico -->
+    </div>
+    <div style="margin-top: 10px; font-size: 0.65rem; color: var(--text-muted); text-align: center;">
+      👆 Haz clic en cualquier otra pieza 3D para inspeccionarla.
+    </div>
+  </div>
+
+  <!-- Panel Izquierdo: Taller de Ensamblaje Paso a Paso e Información Onboarding -->
+  <aside id="panel-assembly" class="panel">
+    <div class="panel-title">
+      <span>Ensamblaje del Dron</span>
+      <span id="step-number" style="font-family: var(--font-mono); font-size: 0.75rem;">1 / 9</span>
+    </div>
+
+    <div class="step-progress-bar">
+      <div id="step-progress-fill" class="step-progress-fill"></div>
+    </div>
+
+    <!-- Onboarding Interactivo de Ensamblaje -->
+    <div id="onboarding-guide-box" class="onboarding-guide-box">
+      <div class="guide-header">
+        <span class="guide-badge" id="guide-steam-phase">Fase E (Ingeniería)</span>
+        <span class="guide-tool" id="guide-tool">🔧 Herramienta requerida</span>
+      </div>
+      <div class="guide-tip" id="guide-tip">Cargando guía técnica...</div>
+    </div>
+
+    <div class="part-card">
+      <h3 id="part-title">Cargando pieza...</h3>
+      <p id="part-desc">Selecciona o avanza de paso para conocer los componentes.</p>
+      <div id="part-specs" class="part-specs">
+        <!-- Ficha técnica dinámica -->
+      </div>
+    </div>
+
+    <div class="assembly-buttons">
+      <button id="btn-step-prev" class="btn-action btn-secondary">◀ Anterior</button>
+      <button id="btn-step-next" class="btn-action">Siguiente ▶</button>
+    </div>
+
+    <div class="assembly-buttons" style="margin-top: 6px;">
+      <button id="btn-assemble-all" class="btn-action">Ensamblar Todo (9)</button>
+      <button id="btn-disassemble" class="btn-action btn-secondary">Desarmar</button>
+    </div>
+
+    <div class="control-group">
+      <label>
+        <span>Vista Explosionada (Despiece 3D):</span>
+        <span id="explosion-val" style="color: var(--accent-cyan);">0%</span>
+      </label>
+      <input type="range" id="explosion-slider" class="range-slider" min="0" max="1.5" step="0.02" value="0">
+    </div>
+
+    <div style="margin-top: 12px; font-size: 0.7rem; color: var(--text-muted); line-height: 1.4;">
+      💡 <strong>Interacción 3D:</strong> Haz clic sobre cualquier pieza para ver ficha técnica y composición PBR. Rota con clic izquierdo y zoom con la rueda.
+    </div>
+  </aside>
+
+  <!-- Panel Derecho: Telemetría de Vuelo, Modos Autónomos y Misión -->
+  <aside id="panel-telemetry" class="panel hidden">
+    <div class="panel-title">
+      <span>Telemetría en Vivo (MAVLink v2)</span>
+      <span id="flight-mode-badge" class="mode-tag-flight">MANUAL</span>
+    </div>
+
+    <!-- Barra de Modos de Vuelo Autónomo (Fase T) -->
+    <div class="flight-modes-bar">
+      <button class="btn-fmode active" data-mode="MANUAL">Manual</button>
+      <button class="btn-fmode" data-mode="ALT_HOLD">Alt Hold</button>
+      <button class="btn-fmode" data-mode="LOITER">Loiter</button>
+      <button class="btn-fmode" data-mode="WAYPOINT">Waypoints</button>
+      <button class="btn-fmode btn-rtl" data-mode="RTL">RTL</button>
+    </div>
+
+    <!-- Horizonte Artificial y Radar Térmico FLIR -->
+    <div class="horizon-radar-container">
+      <div id="hud-horizon-box" style="flex:1;">
+        <canvas id="hud-horizon-canvas"></canvas>
+      </div>
+      <div id="hud-radar-box" style="width:120px; height:120px; background:#060a14; border:1px solid #1e293b; border-radius:8px; position:relative;" title="Mapa Térmico FLIR en Planta">
+        <canvas id="hud-thermal-radar" width="120" height="120" style="width:100%; height:100%;"></canvas>
+        <div style="position:absolute; bottom:2px; left:4px; font-size:0.55rem; color:#00f0ff;">FLIR 2D</div>
+      </div>
+    </div>
+
+    <!-- Rejilla de Métricas de Vuelo -->
+    <div class="telemetry-grid">
+      <div class="telemetry-card">
+        <span class="t-label">Altitud (Y)</span>
+        <div class="t-value"><span id="t-altitude">0.0</span><span class="t-unit">m</span></div>
+      </div>
+      <div class="telemetry-card">
+        <span class="t-label">Velocidad Horiz.</span>
+        <div class="t-value"><span id="t-speed">0.0</span><span class="t-unit">km/h</span></div>
+      </div>
+      <div class="telemetry-card">
+        <span class="t-label">Tasa Vertical</span>
+        <div class="t-value"><span id="t-vspeed">0.0</span><span class="t-unit">m/s</span></div>
+      </div>
+      <div class="telemetry-card">
+        <span class="t-label">Rumbo (Yaw ψ)</span>
+        <div class="t-value"><span id="t-yaw">0°</span></div>
+      </div>
+      <div class="telemetry-card">
+        <span class="t-label">Alabeo (Roll φ)</span>
+        <div class="t-value"><span id="t-roll">0.0°</span></div>
+      </div>
+      <div class="telemetry-card">
+        <span class="t-label">Cabeceo (Pitch θ)</span>
+        <div class="t-value"><span id="t-pitch">0.0°</span></div>
+      </div>
+    </div>
+
+    <!-- Datos Eléctricos (Thevenin ECM) y Térmicos -->
+    <div class="telemetry-grid">
+      <div class="telemetry-card">
+        <span class="t-label">Batería LiPo Thevenin</span>
+        <div class="t-value"><span id="t-voltage">12.6</span><span class="t-unit">V</span></div>
+        <div style="font-size: 0.65rem; color: var(--accent-cyan); font-family: var(--font-mono); margin-top: 2px;">
+          SOC: <span id="t-soc">100%</span> | <span id="t-current">1.4</span> A
+        </div>
+      </div>
+      <div class="telemetry-card">
+        <span class="t-label">Ambiente Térmico</span>
+        <div class="t-value"><span id="t-temp">25°C</span></div>
+        <div style="font-size: 0.65rem; color: var(--accent-amber); font-family: var(--font-mono); margin-top: 2px;">
+          Térmica: <span id="t-updraft">0.0 m/s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salud Estructural y Daños -->
+    <div class="health-box">
+      <div class="health-header">
+        <span>INTEGRIDAD ESTRUCTURAL</span>
+        <span id="t-health-val">100%</span>
+      </div>
+      <div class="health-bar-bg">
+        <div id="t-health-fill" class="health-bar-fill"></div>
+      </div>
+    </div>
+
+    <!-- Medidores de los 4 Motores con empuje real (effectiveB) -->
+    <div style="margin-top: 6px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted); font-family:var(--font-mono);">
+        <span>EMPUJE MOTORES (RPM / N):</span>
+        <span id="t-total-thrust">0.0 N</span>
+      </div>
+      <div class="rotors-grid">
+        <div class="rotor-bar-wrapper">
+          <span class="r-name">M1 (CW)</span>
+          <div class="rotor-meter"><div id="r1-fill" class="rotor-fill"></div></div>
+          <span id="r1-val" class="rotor-val">0</span>
+        </div>
+        <div class="rotor-bar-wrapper">
+          <span class="r-name">M2 (CCW)</span>
+          <div class="rotor-meter"><div id="r2-fill" class="rotor-fill"></div></div>
+          <span id="r2-val" class="rotor-val">0</span>
+        </div>
+        <div class="rotor-bar-wrapper">
+          <span class="r-name">M3 (CW)</span>
+          <div class="rotor-meter"><div id="r3-fill" class="rotor-fill"></div></div>
+          <span id="r3-val" class="rotor-val">0</span>
+        </div>
+        <div class="rotor-bar-wrapper">
+          <span class="r-name">M4 (CCW)</span>
+          <div class="rotor-meter"><div id="r4-fill" class="rotor-fill"></div></div>
+          <span id="r4-val" class="rotor-val">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carga Útil de Extinción y Botones de Vuelo -->
+    <div class="payload-status-box">
+      <div class="p-title">
+        <span>RETARDANTE DE POLIFOSFATO</span>
+        <span id="t-retardant">100%</span>
+      </div>
+      <div class="payload-progress">
+        <div id="retardant-fill" class="payload-fill"></div>
+      </div>
+      <div style="display:flex; gap:6px; margin-top:6px;">
+        <button id="btn-arm" class="btn-action" style="flex:1;">ARMAR MOTORES (X)</button>
+        <button id="btn-toggle-thermal" class="btn-action btn-secondary" style="width:50px;" title="Alternar Visión Térmica FLIR (T)">🌡️</button>
+        <button id="btn-toggle-graphs" class="btn-action btn-secondary" style="width:50px;" title="Ver Osciloscopio Gráfico (G)">📈</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Panel Inferior Izquierdo: Objetivos del Modo Misión -->
+  <div id="hud-mission-tracker" class="hud-mission-tracker hidden">
+    <div class="mission-header">
+      <span>🌲 MISIÓN DE RESCATE FORESTAL</span>
+      <span id="hud-mission-score" class="mission-score">SCORE: 5000</span>
+    </div>
+    <ul id="mission-objectives-list" class="mission-objectives-list">
+      <!-- Objetivos dinámicos -->
+    </ul>
+  </div>
+
+  <!-- Panel Flotante: Osciloscopio Gráfico de Telemetría (Canales Altitud, Voltaje, Corriente, Temp) -->
+  <div id="hud-graphs-panel" class="hud-graphs-panel hidden">
+    <div class="graphs-header">
+      <span>📈 Osciloscopio de Telemetría en Tiempo Real</span>
+      <div class="graphs-legend">
+        <span style="color:#10b981;">● Altitud (m)</span>
+        <span style="color:#f59e0b;">● Voltaje (V)</span>
+        <span style="color:#ef4444;">● Corriente (A)</span>
+        <span style="color:#00f0ff;">● Temp (°C)</span>
+      </div>
+      <button id="btn-close-graphs" class="btn-close-graphs">✕</button>
+    </div>
+    <canvas id="hud-telemetry-canvas" width="520" height="150"></canvas>
+  </div>
+
+  <!-- Barra Inferior: Guía de Teclas, Gatillo de Aspersión y Herramientas -->
+  <footer id="hud-bottom">
+    <div class="key-guide">
+      <div><span class="key-badge">W</span><span class="key-badge">S</span> Throttle</div>
+      <div><span class="key-badge">A</span><span class="key-badge">D</span> Guiñada</div>
+      <div><span class="key-badge">▲</span><span class="key-badge">▼</span> Cabeceo</div>
+      <div><span class="key-badge">◀</span><span class="key-badge">▶</span> Alabeo</div>
+      <div><span class="key-badge">X</span> Armar</div>
+      <div><span class="key-badge">C</span> Cámara</div>
+      <div><span class="key-badge">T</span> FLIR</div>
+      <div><span class="key-badge">G</span> Gráficas</div>
+      <div><span class="key-badge">R</span> Reset</div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button id="btn-open-tutorial" class="btn-extra-hud">❓ Tutorial Mandos</button>
+      <button id="btn-open-logs" class="btn-extra-hud">📋 Bitácora</button>
+      <button id="btn-spray" class="btn-spray">💧 ASPERSIÓN (ESPACIO)</button>
+    </div>
+  </footer>
+
+  <!-- ======================================================================= -->
+  <!-- MODALES INTERACTIVOS (STEAM, TUTORIAL, BITÁCORA Y EVALUACIÓN) -->
+  <!-- ======================================================================= -->
+
+  <!-- Modal Tutorial de Controles -->
+  <div id="modal-tutorial" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>🎮 Guía de Mandos y Operación del Dron ZD550</h2>
+        <button class="modal-close" data-close="modal-tutorial">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="tutorial-grid">
+          <div class="tut-card">
+            <h4>Acelerador y Guiñada (Mano Izquierda)</h4>
+            <p><strong>W:</strong> Incrementar acelerador (ascenso vertical).</p>
+            <p><strong>S:</strong> Reducir acelerador (descenso controlado).</p>
+            <p><strong>A / D:</strong> Rotación sobre el eje vertical (Yaw / Guiñada horaria y antihoraria).</p>
+          </div>
+          <div class="tut-card">
+            <h4>Actitud y Desplazamiento (Mano Derecha)</h4>
+            <p><strong>Flecha Arriba:</strong> Cabeceo adelante (Pitch negativo).</p>
+            <p><strong>Flecha Abajo:</strong> Cabeceo atrás (Pitch positivo).</p>
+            <p><strong>Flechas Izq / Der:</strong> Alabeo lateral (Roll lateral para virajes).</p>
+          </div>
+          <div class="tut-card">
+            <h4>Acciones de Misión y Sistemas</h4>
+            <p><strong>X:</strong> Armar / Desarmar motores.</p>
+            <p><strong>ESPACIO:</strong> Activar boquillas TeeJet de aspersión de retardante químico.</p>
+            <p><strong>T:</strong> Conmutar visión termográfica infrarroja FLIR Ironbow.</p>
+            <p><strong>G:</strong> Abrir osciloscopio de telemetría gráfica en tiempo real.</p>
+            <p><strong>C:</strong> Alternar entre cámara de seguimiento y cámara orbital libre.</p>
+            <p><strong>R:</strong> Retorno rápido / Reset a Helipad.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Bitácora de Vuelos Persistente -->
+  <div id="modal-flight-logs" class="modal-overlay hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>📋 Bitácora de Vuelos y Registro de Misiones (Local & Servidor)</h2>
+        <button class="modal-close" data-close="modal-flight-logs">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+          <span style="font-size:0.85rem; color:var(--text-muted);">Registro cronológico de misiones forestales realizadas por el alumno.</span>
+          <button id="btn-export-logs" class="btn-action" style="padding:4px 12px; font-size:0.8rem;">📥 Exportar Bitácora (JSON)</button>
+        </div>
+        <div class="logs-table-wrapper">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>ID Vuelo</th>
+                <th>Fecha y Hora</th>
+                <th>Duración</th>
+                <th>Focos Apagados</th>
+                <th>Salud Final</th>
+                <th>Puntaje</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body">
+              <!-- Rellenado dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Evaluación Fase STEAM (M / S) -->
+  <div id="modal-steam-test" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="steam-test-title">Evaluación de Fase STEAM</h2>
+        <button class="modal-close" data-close="modal-steam-test">✕</button>
+      </div>
+      <div class="modal-body" id="steam-test-body">
+        <!-- Pregunta interactiva inyectada -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Fin de Misión (Victoria / Derrota) -->
+  <div id="modal-mission-result" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="mission-result-title">Misión Finalizada</h2>
+        <button class="modal-close" data-close="modal-mission-result">✕</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <div id="mission-result-icon" style="font-size:3.5rem; margin-bottom:10px;">🏆</div>
+        <h3 id="mission-result-heading" style="color:var(--accent-green); margin-bottom:8px;">¡MISIÓN CUMPLIDA CON ÉXITO!</h3>
+        <p id="mission-result-desc" style="color:var(--text-muted); font-size:0.9rem; margin-bottom:16px;">Has extinguido todos los conatos forestales y aterrizado seguro en la base.</p>
+        <div class="specs-grid" style="text-align:left; max-width:320px; margin:0 auto 18px auto;">
+          <div><span>PUNTAJE FINAL</span><strong id="res-score">0 pts</strong></div>
+          <div><span>TIEMPO TOTAL</span><strong id="res-time">0 s</strong></div>
+          <div><span>INTEGRIDAD DRON</span><strong id="res-health">100%</strong></div>
+          <div><span>FOCOS APAGADOS</span><strong id="res-fires">3 / 3</strong></div>
+        </div>
+        <button id="btn-mission-ack" class="btn-action" style="padding:10px 24px;">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Librería Babylon.js 100% Local / Offline -->
+  <script src="js/lib/babylon.js"></script>
+
+  <!-- Módulos ES6 de la Aplicación -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

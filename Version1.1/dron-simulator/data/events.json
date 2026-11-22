@@ -1,0 +1,14 @@
+[
+  {
+    "event_type": "objeto_colocado",
+    "proyecto_id": "dron-simulador-zd550-forestal",
+    "student_id": "alumno-local-demo",
+    "timestamp": "2026-11-19T22:23:32.426Z",
+    "phase": "M",
+    "payload": {
+      "partName": "Carcasa Aerodinámica de Rescate Forestal (Fase A: Arte & Diseño)",
+      "stepIndex": 9,
+      "isFullyAssembled": true
+    }
+  }
+]
